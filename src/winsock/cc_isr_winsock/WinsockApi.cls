@@ -182,9 +182,9 @@ Public Function DetermineReadability(ByRef a_readSocketSet As wsock32.ws32_fd_se
     p_selectResult = Select_(0, a_readSocketSet, p_emptyFdSet, p_emptyFdSet, p_time)
 
     If p_selectResult = wsock32.ws32_SOCKET_ERROR Then
-        Err.Raise cc_isr_Core.UserDefinedErrors.SocketSetStatusError.Code, "IdentityReader.WinsockApi.DetermineReadability", _
-                  cc_isr_Core.UserDefinedErrors.SocketSetStatusError.Description & _
-                  Winsock.LastErrorMessage(" Last error: ")
+        cc_isr_Core.UserDefinedErrors.RaiseError cc_isr_Core.UserDefinedErrors.SocketSetStatusError, _
+            "cc_isr_Winsock.WinsockApi.DetermineReadability", _
+            Winsock.LastErrorMessage(" Last error: ")
     End If
     DetermineReadability = p_selectResult
 

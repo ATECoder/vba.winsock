@@ -9,7 +9,11 @@ Attribute VB_PredeclaredId = False
 Attribute VB_Exposed = True
 Option Explicit
 
-Private m_tcpServerSocket As IPv4StreamSocket
+Private Type ThisData
+    TcpServerSocket As IPv4StreamSocket
+End Type
+
+Private This As ThisData
 
 ''' <summary>   The event that is raised upon change of connection. </summary>
 ''' <param name="a_eventArgs">   An <see cref="cc_isr_Winsock.ConnectionChangedEventArgs"/> event args. </param>
@@ -18,7 +22,7 @@ Public Event ConnectionChanged(ByVal a_eventArgs As cc_isr_Winsock.ConnectionCha
 ''' <summary>   Handles the Class Initialize event; constructs the <see cref="TcpServerSocket"/>. </summary>
 Private Sub Class_Initialize()
     
-    Set m_tcpServerSocket = New IPv4StreamSocket
+    Set This.TcpServerSocket = New IPv4StreamSocket
 
 End Sub
 
@@ -33,7 +37,7 @@ End Sub
 ''' <value>   [<see cref="IPv4StreamSocket"/>]. </value>
 Public Property Get TcpServerSocket() As IPv4StreamSocket
     
-    Set TcpServerSocket = m_tcpServerSocket
+    Set TcpServerSocket = This.TcpServerSocket
 
 End Property
 
@@ -75,7 +79,7 @@ End Function
 ''' <returns>   [Boolean] True if the socket is connected; otherwise, False. </returns>
 Public Property Get Connected() As Boolean
     
-    If m_tcpServerSocket Is Nothing Then
+    If This.TcpServerSocket Is Nothing Then
         Connected = False
     Else
         Connected = Me.TcpServerSocket.Connected
@@ -105,7 +109,7 @@ Public Sub Dispose()
     If Me.Connected Then
         Me.TcpServerSocket.CloseConnection
     End If
-    Set m_tcpServerSocket = Nothing
+    Set This.TcpServerSocket = Nothing
 
 End Sub
 
@@ -117,7 +121,7 @@ End Sub
 Private Sub OnConnectionChanged(ByVal a_isConnected As Boolean)
     
     RaiseEvent ConnectionChanged( _
-            cc_isr_Winsock.Constructor.CreateConnectionChangedEventArgs(a_isConnected))
+            cc_isr_Winsock.Factory.NewConnectionChangedEventArgs.Initialize(a_isConnected))
 
 End Sub
 

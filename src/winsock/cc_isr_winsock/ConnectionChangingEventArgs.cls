@@ -8,32 +8,39 @@ Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = False
 Attribute VB_Exposed = True
 Option Explicit
-Private m_connected As Boolean
-Private m_cancel As Boolean
 
-''' <summary>   Initializes the event arguments. </summary>
-''' <para name="isConnected">   [Boolean] The connection state. </param>
-Public Sub Initialize(ByVal a_isConnected As Boolean)
-    m_connected = a_isConnected
-    m_cancel = False
-End Sub
+Private Type ThisData
+    Connected As Boolean
+    Cancel As Boolean
+End Type
+
+Private This As ThisData
+
+''' <summary>   Initializes and returns the event arguments. </summary>
+''' <para name="isConnected">   [Boolean, False] The connection state. </param>
+''' <returns>   [<see cref="ConnectionChangedEventArgs"/>]. </returns>
+Public Function Initialize(Optional ByVal a_isConnected As Boolean = False) As ConnectionChangingEventArgs
+    This.Connected = a_isConnected
+    This.Cancel = False
+    Set Initialize = Me
+End Function
 
 ''' <summary>   Gets the connection state. </summary>
 ''' <value>   [Boolean]. </value>
 Public Property Get Connected() As Boolean
-    Connected = m_connected
+    Connected = This.Connected
 End Property
 
 ''' <summary>   Gets the cancel request. </summary>
 ''' <value>   [Boolean]. </value>
 Public Property Get Cancel() As Boolean
-    Cancel = m_cancel
+    Cancel = This.Cancel
 End Property
 
 ''' <summary>   Sets the cancel request. </summary>
 ''' <param name="a_value">   [Boolean] True to cancel the event. </param>
 Public Property Let Cancel(ByVal a_value As Boolean)
-    m_cancel = a_value
+    This.Cancel = a_value
 End Property
 
 

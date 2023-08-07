@@ -9,14 +9,20 @@ Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = True
 Option Explicit
 
-' true if Winsock was initiated
-Private m_initiated As Boolean
+Private Type ThisData
 
-' true if Winsock was disposed
-Private m_disposed As Boolean
+    ' true if Winsock was initiated
+    Initiated As Boolean
 
-' counts the number of sockets
-Private m_socketCount As Integer
+    ' true if Winsock was disposed
+    Disposed As Boolean
+
+    ' counts the number of sockets
+    SocketCount As Integer
+
+End Type
+
+Private This As ThisData
 
 ''' <summary>   Initiates use of the Winsock DLL by a process. </summary>
 ''' <param name="a_version">   [Long] Specifies the Winsock version. </param>
@@ -67,10 +73,11 @@ Private Sub Class_Initialize()
 End Sub
 
 ''' <summary>   Initializes Winsock. </summary>
-'''< remarks>   This is a singleton class.
+''' <remarks>   This is a singleton class.
 ''' <see href="https://stackoverflow.com/questions/396117/class-static-methods-in-vba"/>
 ''' <see href="https://web.archive.org/web/20160418020100/http://www.utteraccess.com/wiki/Index.php/Singleton"/>
-''' <returns>  [Long] The return value is zero if the operation was successful. Otherwise, the value
+''' </remarks>
+''' <returns>   [Long] The return value is zero if the operation was successful. Otherwise, the value
 ''' ws32_SOCKET_ERROR is returned, a specific error number can be retrieved by calling WSAGetLastError.
 ''' and the error is raised.
 ''' <returns>
@@ -79,7 +86,7 @@ Public Function Initialize() As Long
     Dim p_result As Long: p_result = 0
 
     ' skip if the class was already initialized.
-    If m_initiated Then
+    If This.Initiated Then
         Initialize = p_result
         Exit Function
     End If
@@ -91,13 +98,13 @@ Public Function Initialize() As Long
     p_result = WSAStartup(wsock32.ws32_VERSION, p_startUpInfo)
     
     If p_result <> 0 Then
-        Err.Raise cc_isr_Core.UserDefinedErrors.WinsockStartingError.Code, "IdentityReader.Winsock.Initialize", _
-                  cc_isr_Core.UserDefinedErrors.WinsockStartingError.Description & _
-                  Me.LastErrorMessage(" Last error: ")
+        cc_isr_Core.UserDefinedErrors.RaiseError cc_isr_Core.UserDefinedErrors.WinsockStartingError, _
+            "cc_isr_Winsock.Winsock.Initialize", _
+            Winsock.LastErrorMessage(" Last error: ")
     End If
-    m_initiated = (p_result = 0)
-    m_disposed = False
-    m_socketCount = 0
+    This.Initiated = (p_result = 0)
+    This.Disposed = False
+    This.SocketCount = 0
     Initialize = p_result
 
 End Function
@@ -109,7 +116,7 @@ End Function
 Public Sub Register(ByVal a_activeSocket As IPv4StreamSocket)
     
     If IsObject(a_activeSocket) Then
-        m_socketCount = m_socketCount + 1
+        This.SocketCount = This.SocketCount + 1
     End If
 
 End Sub
@@ -121,7 +128,7 @@ End Sub
 Public Sub UnRegister(ByVal a_activeSocket As IPv4StreamSocket)
     
     If IsObject(a_activeSocket) And (Me.SocketCount > 0) Then
-        m_socketCount = m_socketCount - 1
+        This.SocketCount = This.SocketCount - 1
         If Me.SocketCount = 0 Then
             Me.Dispose
         End If
@@ -132,14 +139,14 @@ End Sub
 ''' <summary>   Returns true if Winsock was initiated. </summary>
 Public Property Get Initiated() As Boolean
     
-    Initiated = m_initiated
+    Initiated = This.Initiated
 
 End Property
 
 ''' <summary>   Returns true if Winsock was Disposed. </summary>
 Public Property Get Disposed() As Boolean
     
-    Disposed = m_disposed
+    Disposed = This.Disposed
 
 End Property
 
@@ -213,9 +220,8 @@ Public Function Cleanup() As Long
     
     p_result = WSACleanup()
     If p_result = wsock32.ws32_SOCKET_ERROR Then
-        Err.Raise cc_isr_Core.UserDefinedErrors.WinsockCleanupError.Code, "IdentityReader.Winsock.Cleanup", _
-                  cc_isr_Core.UserDefinedErrors.WinsockCleanupError.Description & _
-                  Winsock.LastErrorMessage(" Last error: ")
+        cc_isr_Core.UserDefinedErrors.RaiseError cc_isr_Core.UserDefinedErrors.WinsockCleanupError, _
+                "cc_isr_Winsock.Winsock.Cleanup", Winsock.LastErrorMessage(" Last error: ")
     End If
     Cleanup = p_result
 
@@ -223,7 +229,7 @@ End Function
 
 ''' <summary>   Returns the number of sockets associated with this Winsock instance. </summary>
 Public Property Get SocketCount() As Integer
-    SocketCount = m_socketCount
+    SocketCount = This.SocketCount
 End Property
 
 ''' <summary>   Terminates Winsock if all sockets released their association with this instance. </summary>
@@ -231,16 +237,16 @@ Public Sub Dispose()
     
     On Error Resume Next
     
-    If m_initiated And Not m_disposed And (m_socketCount = 0) Then
-        m_disposed = True
-        m_initiated = False
+    If This.Initiated And Not This.Disposed And (This.SocketCount = 0) Then
+        This.Disposed = True
+        This.Initiated = False
         
         ' Shutdown Winsock DLL
         Dim p_result As Long: p_result = WSACleanup()
         If p_result = wsock32.ws32_SOCKET_ERROR Then
-            Err.Raise cc_isr_Core.UserDefinedErrors.WinsockCleanupError.Code, "IdentityReader.Winsock.Cleanup", _
-                      cc_isr_Core.UserDefinedErrors.WinsockCleanupError.Description & _
-                      Winsock.LastErrorMessage(" Last error: ")
+            cc_isr_Core.UserDefinedErrors.RaiseError cc_isr_Core.UserDefinedErrors.WinsockCleanupError, _
+                "cc_isr_Winsock.Winsock.Dispose", Winsock.LastErrorMessage(" Last error: ")
+                      
         End If
     End If
     

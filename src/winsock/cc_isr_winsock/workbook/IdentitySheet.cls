@@ -39,7 +39,7 @@ Private Sub ReadIdentityButton_Click()
     Dim p_repeatCount As Integer: p_repeatCount = Range(m_repeatCountCell).value
     Dim p_timeout As Integer: p_timeout = Range(m_receiveTimeoutCell).value
     
-    Set m_delayStopper = cc_isr_Core.Constructor.CreateStopWatch
+    Set m_delayStopper = cc_isr_Core.Factory.NewStopWatch
     
     If Me.UsingWinsockReadRawButton.value Then
         ' read identity using basic winsock.
@@ -62,6 +62,8 @@ End Sub
 Private Sub ReadIdentity(ByVal a_host As String, ByVal a_port As Long, ByVal a_repeatCount As Integer, _
         ByVal a_timeout As Long)
 
+    Const p_procedureName As String = "ReadIdentity"
+    
     On Error GoTo Finally
     
     Range(m_socketAddressCell) = vbNullString
@@ -76,7 +78,7 @@ Private Sub ReadIdentity(ByVal a_host As String, ByVal a_port As Long, ByVal a_r
     Dim p_sentCount As Integer
     Dim p_readCount As Integer
     
-    Dim p_stopper As StopWatch: Set p_stopper = cc_isr_Core.Constructor.CreateStopWatch
+    Dim p_stopper As StopWatch: Set p_stopper = cc_isr_Core.Factory.NewStopWatch
     Dim p_socket As New IPv4StreamSocket
     Dim p_totalMilliseconds As Double
     
@@ -163,7 +165,8 @@ Finally:
     Dim p_errorMessage As String
     If Not Err Is Nothing Then
         If Err.Number <> 0 Then
-            p_errorMessage = "Reading identity failed " & cc_isr_Core.UserDefinedErrors.FormattedErr & _
+            ThisWorkbook.SetErrSource p_procedureName, Me.name
+            p_errorMessage = "Reading identity failed. " & ThisWorkbook.BuildStandardErrorMessage() & _
                              " Last DLL error = 0x" & VBA.LCase$(VBA.Hex$(Err.LastDllError))
         End If
     End If
@@ -210,6 +213,7 @@ End Sub
 Private Sub ReadIdentityUsingBuffer(ByVal a_host As String, ByVal a_port As Long, ByVal a_repeatCount As Integer, _
         ByVal a_timeout As Integer)
 
+    Const p_procedureName  As String = "ReadIdentityUsingBuffer"
     On Error GoTo Finally
     
     Range(m_socketAddressCell) = vbNullString
@@ -227,7 +231,7 @@ Private Sub ReadIdentityUsingBuffer(ByVal a_host As String, ByVal a_port As Long
     Dim p_sentCount As Integer
     Dim p_readCount As Integer
     
-    Dim p_stopper As StopWatch: Set p_stopper = cc_isr_Core.Constructor.CreateStopWatch
+    Dim p_stopper As StopWatch: Set p_stopper = cc_isr_Core.Factory.NewStopWatch
     Dim p_socket As New IPv4StreamSocket
     Dim p_totalMilliseconds As Double
     
@@ -315,7 +319,8 @@ Finally:
     Dim p_errorMessage As String
     If Not Err Is Nothing Then
         If Err.Number <> 0 Then
-            p_errorMessage = "Reading identity failed " & cc_isr_Core.UserDefinedErrors.FormattedErr & _
+            ThisWorkbook.SetErrSource p_procedureName, Me.name
+            p_errorMessage = "Reading identity failed. " & ThisWorkbook.BuildStandardErrorMessage & _
                              " Last DLL error = 0x" & VBA.LCase$(VBA.Hex$(Err.LastDllError))
         End If
     End If
@@ -362,6 +367,8 @@ End Sub
 Private Sub TcpClientReadIdentity(ByVal a_host As String, ByVal a_port As Long, ByVal a_repeatCount As Integer, _
         ByVal a_timeout As Integer)
 
+    Const p_procedureName  As String = "TcpClientReadIdentity"
+    
     On Error GoTo Finally
     
     Range(m_socketAddressCell) = vbNullString
@@ -373,7 +380,7 @@ Private Sub TcpClientReadIdentity(ByVal a_host As String, ByVal a_port As Long, 
     Range(m_elapsedTimeCell).value = vbNullString
     Range(m_errorMessageCell).value = vbNullString
 
-    Dim p_stopper As StopWatch: Set p_stopper = cc_isr_Core.Constructor.CreateStopWatch
+    Dim p_stopper As StopWatch: Set p_stopper = cc_isr_Core.Factory.NewStopWatch
     Dim p_totalMilliseconds As Double
     
     Dim p_sentCount As Integer
@@ -468,7 +475,8 @@ Finally:
     Dim p_errorMessage As String
     If Not Err Is Nothing Then
         If Err.Number <> 0 Then
-            p_errorMessage = "Reading identity failed using Tcp Client " & cc_isr_Core.UserDefinedErrors.FormattedErr & _
+            ThisWorkbook.SetErrSource p_procedureName, Me.name
+            p_errorMessage = "Reading identity failed using Tcp Client. " & ThisWorkbook.BuildStandardErrorMessage & _
                              " Last DLL error = 0x" & VBA.LCase$(VBA.Hex$(Err.LastDllError))
         End If
     End If

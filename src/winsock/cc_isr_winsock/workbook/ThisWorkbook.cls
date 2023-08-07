@@ -47,6 +47,7 @@ Public Property Let Deployed(ByVal a_value As Boolean)
 
     cc_isr_Core.ThisWorkbook.Deployed = a_value
     cc_isr_Core_IO.ThisWorkbook.Deployed = a_value
+    cc_isr_Test_Fx.ThisWorkbook.Deployed = a_value
 
 End Property
 
@@ -68,7 +69,7 @@ Public Sub SetErrSource(ByVal a_errProcedureName As String, ByVal a_errModuleNam
     
     ' get the current source string
     
-    Dim p_errorSource As String: p_errorSource = Err.source
+    Dim p_errorSource As String: p_errorSource = Err.Source
     
     ' build the error source.
     
@@ -76,47 +77,50 @@ Public Sub SetErrSource(ByVal a_errProcedureName As String, ByVal a_errModuleNam
   
     ' Update the Err.Source
     
-    Err.source = p_errorSource
+    Err.Source = p_errorSource
  
 End Sub
 
 ''' <summary>   Builds a standard error message. </summary>
-''' <param name="a_displayWarning">         [Optional, Boolean, false] True
+''' <param name="a_displayWarning">         [Boolean, false] True
 '''                                         to display a warning rather than
 '''                                         an error message. </param>
-''' <param name="a_descriptionDelimiter">   [Optional, String, ': '] Specify
+''' <param name="a_descriptionDelimiter">   [String, ': '] Specify
 '''                                         the delimiter preceding the description. </param>
 ''' <returns>   A Standard error message string in the form: <para>
-''' Error # (0x#) occurred in <c>Source</c>: Description </para><para>
+''' Error 0x# (Last DLL Error 0x#) occurred in <c>Source</c>: Description </para><para>
 ''' or  </para><para>
-''' Warning # (0x#) occurred in <c>Source</c>: Description  </para>
+''' Warning 0x#  (Last DLL Error 0x#) occurred in <c>Source</c>: Description  </para>
 ''' </returns>
 Public Function BuildStandardErrorMessage(Optional ByVal a_displayWarning As Boolean = False, _
                 Optional a_descriptionDelimiter As String = ": ") As String
 
-    Dim p_builder As String
+    Dim p_builder As String: p_builder = VBA.vbNullString
   
     ' check if we have an error
-    If Err.Number <> 0 Then
+    If VBA.Err.Number <> 0 Then
     
         p_builder = p_builder & IIf(a_displayWarning, "Warning ", "Error ")
-        p_builder = p_builder & Format$(Err.Number)
+        p_builder = p_builder & Format$(VBA.Err.Number)
         
-        Dim p_errNumber As Long: p_errNumber = Err.Number - vbObjectError
+        Dim p_errNumber As Long: p_errNumber = VBA.Err.Number - vbObjectError
         
         If Abs(p_errNumber) < &HFFFF& Then
             p_errNumber = p_errNumber - &H200
-            p_builder = p_builder & " (+0x"
+            p_builder = p_builder & " +0x"
         Else
-            p_errNumber = Err.Number
-            p_builder = p_builder & " (0x"
+            p_errNumber = VBA.Err.Number
+            p_builder = p_builder & " 0x"
         End If
-        p_builder = p_builder & Hex$(p_errNumber)
-        p_builder = p_builder & ") "
-        p_builder = p_builder & "occurred in "
-        p_builder = p_builder & Err.source
+        p_builder = p_builder & VBA.LCase$(VBA.Hex$(p_errNumber))
+        If Err.LastDllError <> 0 Then
+            p_builder = p_builder & " (Last DLL Error 0x"
+            p_builder = p_builder & VBA.LCase$(VBA.Hex$(Err.LastDllError)) & ")"
+        End If
+        p_builder = p_builder & " occurred in "
+        p_builder = p_builder & VBA.Err.Source
         p_builder = p_builder & a_descriptionDelimiter
-        p_builder = p_builder & Err.Description
+        p_builder = p_builder & VBA.Err.Description
         
     End If
 
@@ -223,6 +227,7 @@ Private Sub Workbook_BeforeClose(ByRef a_cancel As Boolean)
     
     ' this disables the save dialog on read only workbooks.
     Me.MarkAsSaved cc_isr_Core_IO.ThisWorkbook, Me.Deployed
+    Me.MarkAsSaved cc_isr_Test_Fx.ThisWorkbook, Me.Deployed
     Me.MarkAsSaved cc_isr_Core.ThisWorkbook, Me.Deployed
     Me.MarkAsSaved ThisWorkbook, Me.Deployed
     
@@ -258,11 +263,13 @@ Private Sub Workbook_Open()
     
     ' turn on code exporting if not deploy or read only
     Me.DisableSavingCode cc_isr_Core_IO.ThisWorkbook, Me.Deployed
+    Me.DisableSavingCode cc_isr_Test_Fx.ThisWorkbook, Me.Deployed
     Me.DisableSavingCode cc_isr_Core.ThisWorkbook, Me.Deployed
     Me.DisableSavingCode ThisWorkbook, Me.Deployed
     
     ' hide the referenced workbooks
     Application.Windows(cc_isr_Core_IO.ThisWorkbook.name).Visible = False
+    Application.Windows(cc_isr_Test_Fx.ThisWorkbook.name).Visible = False
     Application.Windows(cc_isr_Core.ThisWorkbook.name).Visible = False
     
     ' show work book

@@ -30,30 +30,34 @@ Private Sub Class_Terminate()
     IConnectable_Dispose
 End Sub
 
-''' <summary>   Gets the Tcp Client socket. </summary>
-''' <value>   [<see cref="IPv4StreamSocket"/>]. </value>
-Public Property Get TcpClientSocket() As IPv4StreamSocket
-    Set TcpClientSocket = m_tcpClientSocket
-End Property
-
-''' <summary>   Initializes this TCP Client using the provided connected socket. </summary>
+''' <summary>   Initializes and returns this TCP Client using the provided connected socket. </summary>
 ''' <remarks>   Raises an invalid operation exception is a socket is already connected. </remarks>
 ''' <param name="connectedSocket ">   [IPv4StreamSocket] A connected INET stream socket. </param>
-Public Sub Initialize(ByVal a_connectedSocket As IPv4StreamSocket)
+''' <returns>   [<see cref="TcpClient"/>]. </returns>
+Public Function Initialize(ByVal a_connectedSocket As IPv4StreamSocket) As TcpClient
     
     If Me.Connected Then
-        Err.Raise cc_isr_Core.UserDefinedErrors.InvalidOperationError.Code, "cc_isr_Winsock.TcpClient.WinsockApi.Initialize", _
-                  cc_isr_Core.UserDefinedErrors.InvalidOperationError.Description & _
-                  " This Tc Client is connected to " & Me.TcpClientSocket.SocketAddress & _
-                  " A new Tcp Client must be used when initialized using a connected socket at " & _
-                  a_connectedSocket.SocketAddress & "."
+        cc_isr_Core.UserDefinedErrors.RaiseError cc_isr_Core.UserDefinedErrors.InvalidOperationError, _
+            "cc_isr_Winsock.TcpClient.WinsockApi.Initialize", _
+            " This Tc Client is connected to " & Me.TcpClientSocket.SocketAddress & _
+            " A new Tcp Client must be used when initialized using a connected socket at " & _
+            a_connectedSocket.SocketAddress & "."
     End If
     
     ' remove this socket
     If Not m_tcpClientSocket Is Nothing Then Set m_tcpClientSocket = Nothing
     
     Set m_tcpClientSocket = a_connectedSocket
-End Sub
+    
+    Set Initialize = Me
+    
+End Function
+
+''' <summary>   Gets the Tcp Client socket. </summary>
+''' <value>   [<see cref="IPv4StreamSocket"/>]. </value>
+Public Property Get TcpClientSocket() As IPv4StreamSocket
+    Set TcpClientSocket = m_tcpClientSocket
+End Property
 
 ''' <summary>   Sends a terminated message to the server. </summary>
 ''' <param name="a_message">   [String] The message. </param>
@@ -258,7 +262,7 @@ End Function
 ''' <para name="a_isConnected">   [Boolean] The connection state. </param>
 Private Sub OnConnectionChanged(ByVal a_isConnected As Boolean)
     
-    IConnectable_OnConnectionChanged cc_isr_Winsock.Constructor.CreateConnectionChangedEventArgs(a_isConnected)
+    IConnectable_OnConnectionChanged cc_isr_Winsock.Factory.NewConnectionChangedEventArgs.Initialize(a_isConnected)
 
 End Sub
 

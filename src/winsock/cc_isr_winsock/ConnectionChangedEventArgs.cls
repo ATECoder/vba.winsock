@@ -8,18 +8,25 @@ Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = False
 Attribute VB_Exposed = True
 Option Explicit
-Private m_connected As Boolean
 
-''' <summary>   Initializes the event arguments. </summary>
-''' <para name="a_isConnected">   [Boolean] The connection state. </param>
-Public Sub Initialize(ByVal a_isConnected As Boolean)
-    m_connected = a_isConnected
-End Sub
+Private Type ThisData
+    Connected As Boolean
+End Type
+
+Private This As ThisData
+
+''' <summary>   Initializes and return the event arguments. </summary>
+''' <para name="a_isConnected">   [Boolean, False] The connection state. </param>
+''' <returns>   [<see cref="ConnectionChangedEventArgs"/>]. </returns>
+Public Function Initialize(Optional ByVal a_isConnected As Boolean = False) As ConnectionChangedEventArgs
+    This.Connected = a_isConnected
+    Set Initialize = Me
+End Function
 
 ''' <summary>   Gets the connection state. </summary>
 ''' <value>   [Boolean]. </value>
 Public Property Get Connected() As Boolean
-    Connected = m_connected
+    Connected = This.Connected
 End Property
 
 
