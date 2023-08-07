@@ -65,7 +65,7 @@ Public Sub SetErrSource(ByVal a_errProcedureName As String, ByVal a_errModuleNam
     ' thus we assume that this code is robust and will
     ' not cause errors.
     
-    If VBA.vbNullString = a_errProjectName Then a_errProjectName = ActiveWorkbook.VBProject.name
+    If VBA.vbNullString = a_errProjectName Then a_errProjectName = ActiveWorkbook.VBProject.Name
     
     ' get the current source string
     
@@ -166,7 +166,7 @@ exit_Handler:
 err_Handler:
   
     ' append the error source
-    Me.SetErrSource p_procedureName, Me.name
+    Me.SetErrSource p_procedureName, Me.Name
     
     ' display the error message
     MsgBox Me.BuildStandardErrorMessage(), vbExclamation
@@ -203,7 +203,7 @@ exit_Handler:
 err_Handler:
   
     ' append the error source
-    Me.SetErrSource p_procedureName, Me.name
+    Me.SetErrSource p_procedureName, Me.Name
     
     ' display the error message
     MsgBox Me.BuildStandardErrorMessage(), vbExclamation
@@ -241,7 +241,7 @@ exit_Handler:
 err_Handler:
   
     ' append the error source
-    Me.SetErrSource p_procedureName, Me.name
+    Me.SetErrSource p_procedureName, Me.Name
     
     ' display the error message
     MsgBox Me.BuildStandardErrorMessage(), vbExclamation
@@ -268,12 +268,12 @@ Private Sub Workbook_Open()
     Me.DisableSavingCode ThisWorkbook, Me.Deployed
     
     ' hide the referenced workbooks
-    Application.Windows(cc_isr_Core_IO.ThisWorkbook.name).Visible = False
-    Application.Windows(cc_isr_Test_Fx.ThisWorkbook.name).Visible = False
-    Application.Windows(cc_isr_Core.ThisWorkbook.name).Visible = False
+    Application.Windows(cc_isr_Core_IO.ThisWorkbook.Name).Visible = False
+    Application.Windows(cc_isr_Test_Fx.ThisWorkbook.Name).Visible = False
+    Application.Windows(cc_isr_Core.ThisWorkbook.Name).Visible = False
     
     ' show work book
-    Application.Windows(ThisWorkbook.name).Visible = True
+    Application.Windows(ThisWorkbook.Name).Visible = True
     
 ' . . . . . . . . . . . . . . . . . . . . . . . . . . .
 exit_Handler:
@@ -285,7 +285,7 @@ exit_Handler:
 err_Handler:
   
     ' append the error source
-    Me.SetErrSource p_procedureName, Me.name
+    Me.SetErrSource p_procedureName, Me.Name
     
     ' display the error message
     MsgBox Me.BuildStandardErrorMessage(), vbExclamation

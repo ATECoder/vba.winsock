@@ -165,7 +165,7 @@ Finally:
     Dim p_errorMessage As String
     If Not Err Is Nothing Then
         If Err.Number <> 0 Then
-            ThisWorkbook.SetErrSource p_procedureName, Me.name
+            ThisWorkbook.SetErrSource p_procedureName, Me.Name
             p_errorMessage = "Reading identity failed. " & ThisWorkbook.BuildStandardErrorMessage() & _
                              " Last DLL error = 0x" & VBA.LCase$(VBA.Hex$(Err.LastDllError))
         End If
@@ -319,7 +319,7 @@ Finally:
     Dim p_errorMessage As String
     If Not Err Is Nothing Then
         If Err.Number <> 0 Then
-            ThisWorkbook.SetErrSource p_procedureName, Me.name
+            ThisWorkbook.SetErrSource p_procedureName, Me.Name
             p_errorMessage = "Reading identity failed. " & ThisWorkbook.BuildStandardErrorMessage & _
                              " Last DLL error = 0x" & VBA.LCase$(VBA.Hex$(Err.LastDllError))
         End If
@@ -475,7 +475,7 @@ Finally:
     Dim p_errorMessage As String
     If Not Err Is Nothing Then
         If Err.Number <> 0 Then
-            ThisWorkbook.SetErrSource p_procedureName, Me.name
+            ThisWorkbook.SetErrSource p_procedureName, Me.Name
             p_errorMessage = "Reading identity failed using Tcp Client. " & ThisWorkbook.BuildStandardErrorMessage & _
                              " Last DLL error = 0x" & VBA.LCase$(VBA.Hex$(Err.LastDllError))
         End If
