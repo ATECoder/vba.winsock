@@ -42,7 +42,7 @@ Bug reports and contributions are welcome at the [cc.isr.winsock] repository.
 
 [cc.isr.Core]: https://github.com/ATECoder/vba.core
 [cc.isr.core.io]: https://github.com/ATECoder/vba.core/src/io
-[cc.isr.test.fxt]: https://github.com/ATECoder/vba.core/src/testfx
+[cc.isr.test.fx]: https://github.com/ATECoder/vba.core/src/testfx
 
 [ISR]: https://www.integratedscientificresources.com
 

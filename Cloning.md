@@ -13,9 +13,11 @@ Clone the repository along with its requisite repositories to their respective r
 The repositories listed in [external repositories] are required:
 
 [Core repository]
+[MVVM repository] (pending)
 
 ```
 git clone https://github.com/ATECoder/vba.core.git
+git clone https://github.com/ATECoder/vba.mvvm.git
 git clone https://github.com/ATECoder/vba.winsock.git
 ```
 
@@ -28,3 +30,4 @@ where %vba% is the root folder of the VBA libraries, e.g., %my%\lib\vba, and %my
 
 [external repositories]: ExternalReposCommits.csv
 [Core repository]: https://github.com/ATECoder/vba.core.git
+[MVVM repository]: https://github.com/ATECoder/vba.mvvm.git

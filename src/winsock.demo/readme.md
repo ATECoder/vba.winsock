@@ -33,12 +33,18 @@ Follow this procedure for reading the instrument identity string:
 	* ___Using Winsock Buffer Read___ -- reads a buffer of up to 1024 characters at a time;
 	* ___Using Tcp Client___ -- reads using the TCP Client class.
 
+# Feedback
+
+[cc.isr.winsock.demo] is released as open source under the MIT license.
+Bug reports and contributions are welcome at the [cc.isr.winsock] repository.
+
 [cc.isr.winsock]: https://github.com/ATECoder/vba.winsock/src/
+[cc.isr.winsock.demo]: https://github.com/ATECoder/vba.winsock/src/demo
 [cc.isr.winsock.test]: https://github.com/ATECoder/vba.winsock/src/test
 
 [cc.isr.Core]: https://github.com/ATECoder/vba.core
 [cc.isr.core.io]: https://github.com/ATECoder/vba.core/src/io
-[cc.isr.test.fxt]: https://github.com/ATECoder/vba.core/src/testfx
+[cc.isr.test.fx]: https://github.com/ATECoder/vba.core/src/testfx
 
 [ISR]: https://www.integratedscientificresources.com
 

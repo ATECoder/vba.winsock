@@ -4,6 +4,7 @@
 
 ## Workbook references
 
+* [cc.isr.winsock] - Winsock workbook
 * [cc.isr.Core] - Core work book.
 * [cc.isr.core.io] - Core I/O workbook.
 * [cc.isr.Test.Fx] - Test framework workbook
@@ -19,7 +20,12 @@
 The [cc.isr.Winsock.test] workbook includes two worksheets: Identity and TestSheet.
 
 * TestSheet - To run unit tests.
-* Identity - To query the instrument identity using the *IDN? command.
+
+## Scripts
+
+* [unit test]: shortcut to run unit tests.
+* [deploy]: copy the workbook and its dependencies to the deployment `..\..\bin` folder.
+* [localize]: sets workbook references to the local deployment `..\..\bin` folder.
 
 ## Unit Testing
 
@@ -36,13 +42,14 @@ Use the following procedure to run unit tests:
    * Passed tests display Passed with a green background;
    * Failed tests display Fail with a red background and a message describing the failure.
 
-## Scripts
-
-[Test Script]: shortcut to run unit tests
-
 ## Integration Testing
 
 See [cc.isr.winsock.demo]
+
+# Feedback
+
+[cc.isr.winsock.test] is released as open source under the MIT license.
+Bug reports and contributions are welcome at the [cc.isr.winsock] repository.
 
 [cc.isr.winsock]: https://github.com/ATECoder/vba.winsock/src/
 [cc.isr.winsock.test]: https://github.com/ATECoder/vba.winsock/src/test
@@ -51,7 +58,10 @@ See [cc.isr.winsock.demo]
 [cc.isr.Core]: https://github.com/ATECoder/vba.core
 [cc.isr.core.io]: https://github.com/ATECoder/vba.core/src/io
 [cc.isr.test.fx]: https://github.com/ATECoder/vba.core/src/testfx
-[Test Script]: ./cc.isr.winsock.test.unit.test.lnk
+
+[unit test]: ./cc.isr.winsock.test.unit.test.lnk
+[deploy]: ./deploy.ps1
+[localize]: ./localize.ps1
 
 [ISR]: https://www.integratedscientificresources.com
 
