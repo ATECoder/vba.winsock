@@ -70,10 +70,9 @@ Private Declare PtrSafe Function GetSystemDefaultLangID_ Lib "kernel32" Alias "G
 '''< remarks>   This is a singleton class.
 ''' <see href="https://stackoverflow.com/questions/396117/class-static-methods-in-vba"/>
 ''' <see href="https://web.archive.org/web/20160418020100/http://www.utteraccess.com/wiki/Index.php/Singleton"/>
-''' This method is call on the first method (not property) access of this class.
+''' This method is called on the first method (not property) access of this class.
 ''' </remarks>
 Private Sub Class_Initialize()
-    Debug.Print "initializing Winsock"
 End Sub
 
 ''' <summary>   Initializes Winsock. </summary>

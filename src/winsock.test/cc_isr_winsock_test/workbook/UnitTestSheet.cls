@@ -14,7 +14,7 @@ Private Sub ListTestsButton_Click()
     
     Dim p_moduleInfo As ModuleInfo
     testNamesCombo.Clear
-    For Each p_moduleInfo In WorkbookUtilities.EnumerateProjectModules(cc_isr_Winsock.ThisWorkbook.VBProject)
+    For Each p_moduleInfo In WorkbookUtilities.EnumerateProjectModules(cc_isr_Winsock_Test.ThisWorkbook.VBProject)
         DoEvents
         testNamesCombo.AddItem p_moduleInfo.FullName
     Next p_moduleInfo
@@ -23,6 +23,6 @@ End Sub
 
 ''' <summary>   Runs the selected test. </summary>
 Private Sub RunTestsButton_Click()
-    cc_isr_Test_Fx.TestExecutive.Execute TestSheet, True
+    cc_isr_Test_Fx.TestExecutive.Execute UnitTestSheet, True
 End Sub
 

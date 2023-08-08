@@ -47,7 +47,6 @@ Public Property Let Deployed(ByVal a_value As Boolean)
 
     cc_isr_Core.ThisWorkbook.Deployed = a_value
     cc_isr_Core_IO.ThisWorkbook.Deployed = a_value
-    cc_isr_Test_Fx.ThisWorkbook.Deployed = a_value
 
 End Property
 
@@ -227,7 +226,6 @@ Private Sub Workbook_BeforeClose(ByRef a_cancel As Boolean)
     
     ' this disables the save dialog on read only workbooks.
     Me.MarkAsSaved cc_isr_Core_IO.ThisWorkbook, Me.Deployed
-    Me.MarkAsSaved cc_isr_Test_Fx.ThisWorkbook, Me.Deployed
     Me.MarkAsSaved cc_isr_Core.ThisWorkbook, Me.Deployed
     Me.MarkAsSaved ThisWorkbook, Me.Deployed
     
@@ -263,13 +261,11 @@ Private Sub Workbook_Open()
     
     ' turn on code exporting if not deploy or read only
     Me.DisableSavingCode cc_isr_Core_IO.ThisWorkbook, Me.Deployed
-    Me.DisableSavingCode cc_isr_Test_Fx.ThisWorkbook, Me.Deployed
     Me.DisableSavingCode cc_isr_Core.ThisWorkbook, Me.Deployed
     Me.DisableSavingCode ThisWorkbook, Me.Deployed
     
     ' hide the referenced workbooks
     Application.Windows(cc_isr_Core_IO.ThisWorkbook.Name).Visible = False
-    Application.Windows(cc_isr_Test_Fx.ThisWorkbook.Name).Visible = False
     
     Application.Windows(cc_isr_Core.ThisWorkbook.Name).Visible = True
     DoEvents

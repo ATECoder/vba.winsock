@@ -110,7 +110,8 @@ Public Function PingPrologix(Optional ByVal a_host As String = "192.168.0.252", 
     
     PingPrologix = Me.PingPort(a_host, a_port, p_details)
     
-    If Not PingPrologix Then Debug.Print p_details
+    If Not PingPrologix Then _
+        Debug.Print "@" & ThisWorkbook.VBProject.Name & "." & "Net.PingPrologix. " & p_details
    
 End Function
 
