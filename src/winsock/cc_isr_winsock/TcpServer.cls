@@ -7,6 +7,10 @@ Attribute VB_GlobalNameSpace = False
 Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = False
 Attribute VB_Exposed = True
+''' - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+''' <summary>   TCP Server. </summary>
+''' - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
 Option Explicit
 
 Private Type ThisData

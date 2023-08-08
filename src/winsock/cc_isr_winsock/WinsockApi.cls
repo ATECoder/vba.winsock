@@ -7,6 +7,10 @@ Attribute VB_GlobalNameSpace = False
 Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = False
+''' - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+''' <summary>   Winsock API. </summary>
+''' - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
 Option Explicit
 
 ''' <summary>   Creates a socket that is bound to a specific transport service provider. </summary>
@@ -68,6 +72,22 @@ Private Declare PtrSafe Function Select_ Lib "wsock32.dll" Alias "select" ( _
         ByVal a_nfds As Integer, ByRef a_readFDS As wsock32.ws32_fd_set, ByRef a_writeFDS As wsock32.ws32_fd_set, _
         ByRef a_errorFDS As wsock32.ws32_fd_set, ByRef a_timeout As wsock32.ws32_Time_Value) As Integer
 
+''' <summary>   Determines the round-trip time (RTT) and hop count to the specified destination. </summary>
+''' <param name="a_destIpAddress">   [in, IPAddr] IP address of the destination for which to determine the
+'''                                  RTT and hop count, in the form of an IPAddr structure. </param>
+''' <param name="a_popCount">        [out, Long] Pointer to a ULONG variable. This variable receives the hop count
+'''                                  to the destination specified by the DestIpAddress parameter.. </param>
+''' <param name="a_maxHops">         [in, Long] Maximum number of hops to search for the destination. If the number
+'''                                  of hops to the destination exceeds this number, the function terminates the
+'''                                  search and returns FALSE. </param>
+''' <param name="a_roundTripTime">   [out, long] Round-trip time, in milliseconds, to the destination specified by
+'''                                  <paramref name="a_destIpAddress"/>. </param>
+''' <returns>   [Boolean]. If the function succeeds, the return value is TRUE; otheriwse, if the function fails,
+'''             the return value is FALSE. Call GetLastError to obtain the error code for the failure. <returns>
+Private Declare PtrSafe Function GetRTTAndHopCount_ Lib "iphlpapi.dll" Alias "GetRTTAndHopCount" ( _
+        ByVal a_destIpAddress As Long, ByRef a_hopCount As Long, ByVal a_maxHops As Long, _
+        ByRef a_roundTripTime As Long) As Long
+        
 ''' <summary>   Creates a socket that is bound to a IPv4 transport service. </summary>
 ''' <returns>   If no error occurs, socket returns a descriptor referencing the new socket.
 ''' Otherwise, a value of ws32_INVALID_SOCKET is returned, and a specific error code can be retrieved by
@@ -188,5 +208,32 @@ Public Function DetermineReadability(ByRef a_readSocketSet As wsock32.ws32_fd_se
     End If
     DetermineReadability = p_selectResult
 
+End Function
+
+''' <summary>   Determines the round-trip time (RTT) and hop count to the specified destination. </summary>
+''' <remarks>
+''' <see href="https://www.fortypoundhead.com/showcontent.asp?artid=24045"/>
+''' <see href="http://vbnet.mvps.org/"/>
+''' </remarks>
+''' <param name="a_ipv4Address">     [in, String] IP address of the destination for which to determine the
+'''                                  RTT and hop count. </param>
+''' <param name="a_popCount">        [out, Long] Pointer to a ULONG variable. This variable receives the hop count
+'''                                  to the destination specified by the DestIpAddress parameter.. </param>
+''' <param name="a_maxHops">         [in, Long] Maximum number of hops to search for the destination. If the number
+'''                                  of hops to the destination exceeds this number, the function terminates the
+'''                                  search and returns FALSE. </param>
+''' <param name="a_roundTripTime">   [out, long] Round-trip time, in milliseconds, to the destination specified by
+'''                                  <paramref name="a_destIpAddress"/>. </param>
+''' <returns>   [Boolean]. If the function succeeds, the return value is TRUE; otheriwse, if the function fails,
+'''             the return value is FALSE. Call GetLastError to obtain the error code for the failure. <returns>
+Public Function GetRountTripAndHopCount(ByVal a_ipv4Address As String, ByRef a_hopsCount As Long, _
+        ByVal a_maxHops As Long, ByRef a_rountTripTime As Long) As Boolean
+
+    Dim p_IpAddress As Long
+        
+    p_IpAddress = Me.ToInetAddress(a_ipv4Address)
+    
+    GetRountTripAndHopCount = 1 = GetRTTAndHopCount_(p_IpAddress, a_hopsCount, a_maxHops, a_rountTripTime)
+    
 End Function
 

@@ -1,4 +1,8 @@
 Attribute VB_Name = "IPv4StreamSocketTests"
+''' - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+''' <summary>   IPV4 Stream socket tests. </summary>
+''' - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
 Option Explicit
 
 ''' <summary>   Unit test. Asserts creating a socket. </summary>

@@ -270,7 +270,11 @@ Private Sub Workbook_Open()
     ' hide the referenced workbooks
     Application.Windows(cc_isr_Core_IO.ThisWorkbook.Name).Visible = False
     Application.Windows(cc_isr_Test_Fx.ThisWorkbook.Name).Visible = False
+    
+    Application.Windows(cc_isr_Core.ThisWorkbook.Name).Visible = True
+    DoEvents
     Application.Windows(cc_isr_Core.ThisWorkbook.Name).Visible = False
+    DoEvents
     
     ' show work book
     Application.Windows(ThisWorkbook.Name).Visible = True

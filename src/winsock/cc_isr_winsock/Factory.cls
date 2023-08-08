@@ -7,6 +7,10 @@ Attribute VB_GlobalNameSpace = False
 Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = True
+''' - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+''' <summary>   Winsock object  factory. </summary>
+''' - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
 Option Explicit
 
 ''' <summary>   Instantiates a new <see cref="IPv4StreamSocket"/> object. </summary>

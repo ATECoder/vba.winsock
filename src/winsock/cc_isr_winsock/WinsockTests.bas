@@ -1,4 +1,8 @@
 Attribute VB_Name = "WinsockTests"
+''' - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+''' <summary>   Winsock tests. </summary>
+''' - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
 Option Explicit
 
 ''' <summary>   Unit test. Asserts instantiating and disposing of the Winsock framework. </summary>

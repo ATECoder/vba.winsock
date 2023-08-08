@@ -1,4 +1,8 @@
 Attribute VB_Name = "wsock32"
+''' - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+''' <summary>   Winsock 32 constants. </summary>
+''' - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
 Option Explicit
 
 ''' <summary>   The Winsock implementation version </summary.

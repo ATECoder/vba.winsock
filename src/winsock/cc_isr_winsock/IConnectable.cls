@@ -7,6 +7,10 @@ Attribute VB_GlobalNameSpace = False
 Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = False
 Attribute VB_Exposed = True
+''' - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+''' <summary>   Connectable interface. </summary>
+''' - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
 Option Explicit
 
 ''' <summary>   Close the connection and releases the socket. </summary>
