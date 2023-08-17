@@ -8,7 +8,7 @@ Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = True
 ''' - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-''' <summary>   Winsock initialiation and termination. </summary>
+''' <summary>   Winsock initialization and termination. </summary>
 ''' - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 Option Explicit
@@ -124,11 +124,11 @@ Public Sub Register(ByVal a_activeSocket As IPv4StreamSocket)
 
 End Sub
 
-''' <summary>   Un-Registers this socket from the Winsock class. </summary>
+''' <summary>   Unregisters this socket from the Winsock class. </summary>
 ''' <remarks>   Call this method to remove the socket from the class so it can be disposed when having
 ''' no registered sockets.</remarks>
 ''' <param name="activeSocket">   The socket that is unregistering. </param>
-Public Sub UnRegister(ByVal a_activeSocket As IPv4StreamSocket)
+Public Sub Unregister(ByVal a_activeSocket As IPv4StreamSocket)
     
     If IsObject(a_activeSocket) And (Me.SocketCount > 0) Then
         This.SocketCount = This.SocketCount - 1
@@ -164,9 +164,9 @@ Public Function LastErrorMessage(ByVal prefix As String) As String
         Dim p_description As String
         p_description = Me.LastErrorDescription(p_number)
         If StringExtensions.IsNullOrEmpty(p_description) Then
-            LastErrorMessage = prefix & p_description & " #" & CStr(p_number) & "."
+            LastErrorMessage = prefix & p_description & " #" & VBA.CStr(p_number) & "."
         Else
-            LastErrorMessage = prefix & "#" & CStr(p_number) & "."
+            LastErrorMessage = prefix & "#" & VBA.CStr(p_number) & "."
         End If
     End If
 
@@ -189,14 +189,14 @@ Public Function LastErrorDescription(ByVal a_errorNumber As Long) As String
     
     ' The language into which to format the message. 0 = default language.
     
-    Dim langId As Long: langId = 0
+    Dim p_languageId As Long: p_languageId = 0
     
     Dim p_errMessage As String * FORMAT_MESSAGE_TEXT_LEN
     Dim p_result As Long
     p_result = FormatMessage_(FORMAT_MESSAGE_FROM_SYSTEM Or FORMAT_MESSAGE_IGNORE_INSERTS, _
            0, _
            a_errorNumber, _
-           langId, _
+           p_languageId, _
            p_errMessage, _
            FORMAT_MESSAGE_TEXT_LEN, _
            0)

@@ -249,7 +249,7 @@ Private Function IConnectable_CloseConnection() As Boolean
     
         Me.TcpClientSocket.CloseConnection
         
-        ' the socket must be disposed here becuase it cannot be used after
+        ' the socket must be disposed here because it cannot be used after
         ' the connection is closed.
         Set m_tcpClientSocket = Nothing
         

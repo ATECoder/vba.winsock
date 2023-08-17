@@ -24,13 +24,13 @@ Option Explicit
 ''' <param name="a_maxHops">       [in, Long, 20] Maximum number of hops to search for the destination. If the number
 '''                                of hops to the destination exceeds this number, the function terminates the
 '''                                search and returns FALSE. </param>
-''' <returns>   [Boolean]. If the function succeeds, the return value is TRUE; otheriwse, if the function fails,
+''' <returns>   [Boolean]. If the function succeeds, the return value is TRUE; otherwise, if the function fails,
 '''             the return value is FALSE. Call GetLastError to obtain the error code for the failure. <returns>
 Public Function Ping(ByVal a_ipv4Address As String, Optional ByVal a_maxHops As Long = 20) As Boolean
 
     Dim p_hopsCount      As Long
     Dim p_roundTripTime  As Long
-    Ping = WinsockApi.GetRountTripAndHopCount(a_ipv4Address, p_hopsCount, a_maxHops, p_roundTripTime)
+    Ping = WinsockApi.GetRoundTripAndHopCount(a_ipv4Address, p_hopsCount, a_maxHops, p_roundTripTime)
     
 End Function
 
@@ -84,7 +84,7 @@ Finally:
     
         If p_socket.Connected Then
             
-            Dim p_stopper As StopWatch: Set p_stopper = cc_isr_Core.Factory.NewStopWatch
+            Dim p_stopper As Stopwatch: Set p_stopper = cc_isr_Core.Factory.NewStopwatch
             p_stopper.Wait 5
             
             p_socket.CloseConnection

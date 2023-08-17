@@ -50,14 +50,14 @@ Private Declare PtrSafe Function ToInetByteOrder_ Lib "wsock32.dll" Alias "htons
 ''' <summary>   Converts an IPv4 dotted-decimal address into a binary address value for the ws32_IN_ADDR structure. </summary>
 ''' <param name="a_hostName">   [in] An IPv4 dotted-decimal address. </param>
 ''' <returns>   If no error occurs, returns an unsigned long value containing a suitable binary
-''' representation of the Internet address given. If the string in the hostname parameter does not contain a legitimate
-''' Internet address, for example if a portion of an "a.b.c.d" address exceeds 255, then returns the value
-''' ws32_INADDR_NONE. <returns>
+'''             representation of the Internet address given. If the string in the <see paramref="a_hostName"/>
+'''             parameter does not contain a legitimate Internet address, for example if a portion of an
+'''             "a.b.c.d" address exceeds 255, then returns the value ws32_INADDR_NONE. <returns>
 Private Declare PtrSafe Function ToInetAddress_ Lib "wsock32.dll" Alias "inet_addr" ( _
         ByVal a_hostName As String) As Long
         
 ''' <summary>   Determines the status of one or more sockets, waiting if necessary, to perform synchronous I/O. </summary>
-''' <param name="a_NFDS">       [in] Ignored. The nfds parameter is included only for compatibility with Berkeley sockets.</param>
+''' <param name="a_NFDS">       [in] Ignored. This parameter is included only for compatibility with Berkeley sockets.</param>
 ''' <param name="a_readFSD">    [in, out] An optional pointer to a set of sockets to be checked for readability. </param>
 ''' <param name="a_writeFDS">   [in, out] An optional pointer to a set of sockets to be checked for writability. </param>
 ''' <param name="a_errorFDS">   [in, out] An optional pointer to a set of sockets to be checked for errors. </param>
@@ -73,19 +73,19 @@ Private Declare PtrSafe Function Select_ Lib "wsock32.dll" Alias "select" ( _
         ByRef a_errorFDS As wsock32.ws32_fd_set, ByRef a_timeout As wsock32.ws32_Time_Value) As Integer
 
 ''' <summary>   Determines the round-trip time (RTT) and hop count to the specified destination. </summary>
-''' <param name="a_destIpAddress">   [in, IPAddr] IP address of the destination for which to determine the
+''' <param name="a_destination">     [in, IPAddr] IP address of the destination for which to determine the
 '''                                  RTT and hop count, in the form of an IPAddr structure. </param>
 ''' <param name="a_popCount">        [out, Long] Pointer to a ULONG variable. This variable receives the hop count
-'''                                  to the destination specified by the DestIpAddress parameter.. </param>
+'''                                  to the destination specified by the <paramref name="a_destination"/>. </param>
 ''' <param name="a_maxHops">         [in, Long] Maximum number of hops to search for the destination. If the number
 '''                                  of hops to the destination exceeds this number, the function terminates the
 '''                                  search and returns FALSE. </param>
 ''' <param name="a_roundTripTime">   [out, long] Round-trip time, in milliseconds, to the destination specified by
-'''                                  <paramref name="a_destIpAddress"/>. </param>
-''' <returns>   [Boolean]. If the function succeeds, the return value is TRUE; otheriwse, if the function fails,
+'''                                  <paramref name="a_destination"/>. </param>
+''' <returns>   [Boolean]. If the function succeeds, the return value is TRUE; otherwise, if the function fails,
 '''             the return value is FALSE. Call GetLastError to obtain the error code for the failure. <returns>
 Private Declare PtrSafe Function GetRTTAndHopCount_ Lib "iphlpapi.dll" Alias "GetRTTAndHopCount" ( _
-        ByVal a_destIpAddress As Long, ByRef a_hopCount As Long, ByVal a_maxHops As Long, _
+        ByVal a_destination As Long, ByRef a_hopCount As Long, ByVal a_maxHops As Long, _
         ByRef a_roundTripTime As Long) As Long
         
 ''' <summary>   Creates a socket that is bound to a IPv4 transport service. </summary>
@@ -106,9 +106,9 @@ End Function
 ''' <summary>   Converts an IPv4 dotted-decimal address into a binary address value for the ws32_IN_ADDR structure. </summary>
 ''' <param name="a_host">   [in] An IPv4 dotted-decimal address. </param>
 ''' <returns>   If no error occurs, returns an unsigned long value containing a suitable binary
-''' representation of the Internet address given. If the string in the hostname parameter does not contain a legitimate
-''' Internet address, for example if a portion of an "a.b.c.d" address exceeds 255, then returns the value
-''' ws32_INADDR_NONE. <returns>
+''' representation of the Internet address given. If the string in the <see paramref="a_host"/> parameter
+''' does not contain a legitimate Internet address, for example if a portion of an "a.b.c.d" address exceeds 255,
+''' then returns the value ws32_INADDR_NONE. <returns>
 Public Function ToInetAddress(ByVal a_host As String) As Long
     ToInetAddress = ToInetAddress_(a_host)
 End Function
@@ -223,17 +223,17 @@ End Function
 '''                                  of hops to the destination exceeds this number, the function terminates the
 '''                                  search and returns FALSE. </param>
 ''' <param name="a_roundTripTime">   [out, long] Round-trip time, in milliseconds, to the destination specified by
-'''                                  <paramref name="a_destIpAddress"/>. </param>
-''' <returns>   [Boolean]. If the function succeeds, the return value is TRUE; otheriwse, if the function fails,
+'''                                  <paramref name="a_ipv4Address"/>. </param>
+''' <returns>   [Boolean]. If the function succeeds, the return value is TRUE; otherwise, if the function fails,
 '''             the return value is FALSE. Call GetLastError to obtain the error code for the failure. <returns>
-Public Function GetRountTripAndHopCount(ByVal a_ipv4Address As String, ByRef a_hopsCount As Long, _
+Public Function GetRoundTripAndHopCount(ByVal a_ipv4Address As String, ByRef a_hopsCount As Long, _
         ByVal a_maxHops As Long, ByRef a_rountTripTime As Long) As Boolean
 
     Dim p_IpAddress As Long
         
     p_IpAddress = Me.ToInetAddress(a_ipv4Address)
     
-    GetRountTripAndHopCount = 1 = GetRTTAndHopCount_(p_IpAddress, a_hopsCount, a_maxHops, a_rountTripTime)
+    GetRoundTripAndHopCount = 1 = GetRTTAndHopCount_(p_IpAddress, a_hopsCount, a_maxHops, a_rountTripTime)
     
 End Function
 

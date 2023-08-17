@@ -8,7 +8,7 @@ Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = False
 Attribute VB_Exposed = True
 ''' - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-''' <summary>   Connectionchanging event arguments. </summary>
+''' <summary>   Connection changing event arguments. </summary>
 ''' - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 Option Explicit

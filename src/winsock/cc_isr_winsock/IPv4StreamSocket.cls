@@ -115,8 +115,9 @@ Private Declare PtrSafe Function send_ Lib "wsock32.dll" Alias "send" ( _
 ''' <param name="a_opttionName">    [in] The socket option for which the value is to be set (for example, ws32_SO_BROADCAST).
 '''                                 The option name parameter must be a socket option defined within the specified level,
 '''                                 or behavior is undefined. </param>
-''' <param name="a_optiobValue">    [in] A pointer to the buffer in which the value for the requested option is specified. </param>
-''' <param name="a_optionLength">   [in] The size, in bytes, of the buffer pointed to by the optval parameter. </param>
+''' <param name="a_optionValue">    [in] A pointer to the buffer in which the value for the requested option is specified. </param>
+''' <param name="a_optionLength">   [in] The size, in bytes, of the buffer pointed to by the
+'''                                 <paramref="a_optionValue"/> argument. </param>
 ''' <returns>   If no error occurs, setsockopt returns zero. Otherwise, a value of ws32_SOCKET_ERROR is returned,
 ''' and a specific error code can be retrieved by calling WSAGetLastError. <returns>
 Private Declare PtrSafe Function setsockopt_ Lib "wsock32.dll" Alias "setsockopt" ( _
@@ -203,7 +204,7 @@ Private Sub Class_Terminate()
     On Error Resume Next
     
     ' unregister this socket.
-    Winsock.UnRegister Me
+    Winsock.Unregister Me
     
     On Error GoTo 0
 
@@ -301,7 +302,7 @@ Public Function OpenConnection(ByVal a_host As String, ByVal a_port As Long) As 
     
     This.SocketPort = a_port
     This.socketHost = a_host
-    This.SocketAddress = a_host & ":" & CStr(a_port)
+    This.SocketAddress = a_host & ":" & VBA.CStr(a_port)
     
     OpenConnection = This.Connected
 
@@ -450,7 +451,7 @@ Public Function SendMessage(ByVal a_message As String) As Long
         ElseIf p_sentLength <> p_messageLength Then
             cc_isr_Core.UserDefinedErrors.RaiseError cc_isr_Core.UserDefinedErrors.SocketSendError, _
                 "cc_isr_Winsock.IPv4StreamSocket.SendMessage", _
-                " A partial message was sent: " & CStr(p_sentLength) & " out of " & CStr(p_messageLength)
+                " A partial message was sent: " & VBA.CStr(p_sentLength) & " out of " & VBA.CStr(p_messageLength)
             SendMessage = SEND_PARTIAL_MESSAGE_ERROR
         Else
             SendMessage = p_sentLength
@@ -485,12 +486,12 @@ Public Function ReceiveTerminatedMessage(ByRef a_buffer As String, ByVal a_maxLe
         
         If p_count < 1 Then
             ReceiveTerminatedMessage = RECEIVE_ERROR
-            a_buffer = Chr$(0)
+            a_buffer = VBA.Chr$(0)
             Exit Function
         End If
         
         If c = a_termination Then
-           a_buffer = a_buffer + Chr$(0)
+           a_buffer = a_buffer + VBA.Chr$(0)
            ReceiveTerminatedMessage = p_length
            Exit Function
         End If
@@ -552,7 +553,7 @@ End Function
 ''' <returns>   The received characters. </returns>
 Public Function ReceiveBytes(ByVal a_maxLength As Long) As String
     
-    Dim p_buffer As String: p_buffer = StringExtensions.Repeat(Chr(0), a_maxLength)
+    Dim p_buffer As String: p_buffer = StringExtensions.Repeat(VBA.Chr$(0), a_maxLength)
     
     Dim p_actualLength As Long
     
