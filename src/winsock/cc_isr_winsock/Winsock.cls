@@ -159,7 +159,7 @@ Public Function LastErrorMessage(ByVal prefix As String) As String
     
     Dim p_number As Long: p_number = Me.LastError
     If p_number = 0 Then
-        LastErrorMessage vbNullString
+        LastErrorMessage = vbNullString
     Else
         Dim p_description As String
         p_description = Me.LastErrorDescription(p_number)
