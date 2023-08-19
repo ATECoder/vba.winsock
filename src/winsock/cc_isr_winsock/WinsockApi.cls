@@ -202,8 +202,8 @@ Public Function DetermineReadability(ByRef a_readSocketSet As wsock32.ws32_fd_se
     p_selectResult = Select_(0, a_readSocketSet, p_emptyFdSet, p_emptyFdSet, p_time)
 
     If p_selectResult = wsock32.ws32_SOCKET_ERROR Then
-        cc_isr_Core.UserDefinedErrors.RaiseError cc_isr_Core.UserDefinedErrors.SocketSetStatusError, _
-            "cc_isr_Winsock.WinsockApi.DetermineReadability", _
+        cc_isr_Core_IO.UserDefinedErrors.RaiseError cc_isr_Core_IO.UserDefinedErrors.SocketSetStatusError, _
+            ThisWorkbook.VBProject.Name & "." & TypeName(Me) & ".DetermineReadability", _
             Winsock.LastErrorMessage(" Last error: ")
     End If
     DetermineReadability = p_selectResult

@@ -166,8 +166,8 @@ Finally:
     Dim p_errorMessage As String
     If Not Err Is Nothing Then
         If Err.Number <> 0 Then
-            ThisWorkbook.SetErrSource p_procedureName, Me.Name
-            p_errorMessage = "Reading identity failed. " & ThisWorkbook.BuildStandardErrorMessage()
+            cc_isr_Core_IO.ErrorMessageBuilder.SetErrSource p_procedureName, Me.Name
+            p_errorMessage = "Reading identity failed. " & cc_isr_Core_IO.ErrorMessageBuilder.BuildStandardErrorMessage()
         End If
     End If
     
@@ -320,8 +320,8 @@ Finally:
     Dim p_errorMessage As String
     If Not Err Is Nothing Then
         If Err.Number <> 0 Then
-            ThisWorkbook.SetErrSource p_procedureName, Me.Name
-            p_errorMessage = "Reading identity failed. " & ThisWorkbook.BuildStandardErrorMessage
+            cc_isr_Core_IO.ErrorMessageBuilder.SetErrSource p_procedureName, Me.Name
+            p_errorMessage = "Reading identity failed. " & cc_isr_Core_IO.ErrorMessageBuilder.BuildStandardErrorMessage
         End If
     End If
     
@@ -475,8 +475,8 @@ Finally:
     Dim p_errorMessage As String
     If Not Err Is Nothing Then
         If Err.Number <> 0 Then
-            ThisWorkbook.SetErrSource p_procedureName, Me.Name
-            p_errorMessage = "Reading identity failed using Tcp Client. " & ThisWorkbook.BuildStandardErrorMessage
+            cc_isr_Core_IO.ErrorMessageBuilder.SetErrSource p_procedureName, Me.Name
+            p_errorMessage = "Reading identity failed using Tcp Client. " & cc_isr_Core_IO.ErrorMessageBuilder.BuildStandardErrorMessage
         End If
     End If
     

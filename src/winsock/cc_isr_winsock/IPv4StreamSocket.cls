@@ -184,8 +184,8 @@ Private Sub Class_Initialize()
     
     This.SocketId = WinsockApi.CreateIPv4StreamSocket()
     If This.SocketId = wsock32.ws32_INVALID_SOCKET Then
-        cc_isr_Core.UserDefinedErrors.RaiseError cc_isr_Core.UserDefinedErrors.SocketCreationError, _
-            "cc_isr_Winsock.IPv4StreamSocket.Initialize", _
+        cc_isr_Core_IO.UserDefinedErrors.RaiseError cc_isr_Core_IO.UserDefinedErrors.SocketCreationError, _
+            ThisWorkbook.VBProject.Name & "." & TypeName(Me) & ".Initialize", _
             Winsock.LastErrorMessage(" Last error: ")
     Else
         Winsock.Register Me
@@ -265,8 +265,8 @@ Public Function OpenConnection(ByVal a_host As String, ByVal a_port As Long) As 
    
     This.Connected = False
     If VBA.vbNullString = a_host Then
-        cc_isr_Core.UserDefinedErrors.RaiseError cc_isr_Core.UserDefinedErrors.InvalidArgumentError, _
-            "cc_isr_Winsock.IPv4StreamSocket.OpenConnection", _
+        cc_isr_Core_IO.UserDefinedErrors.RaiseError cc_isr_Core_IO.UserDefinedErrors.InvalidArgumentError, _
+            ThisWorkbook.VBProject.Name & "." & TypeName(Me) & ".OpenConnection", _
             " Argument: a_host is empty"
     End If
     
@@ -290,8 +290,8 @@ Public Function OpenConnection(ByVal a_host As String, ByVal a_port As Long) As 
     
     If p_connectResult = wsock32.ws32_SOCKET_ERROR Then
         This.Connected = False
-        cc_isr_Core.UserDefinedErrors.RaiseError cc_isr_Core.UserDefinedErrors.SocketConnectionError, _
-            "cc_isr_Winsock.IPv4StreamSocket.OpenConnection", _
+        cc_isr_Core_IO.UserDefinedErrors.RaiseError cc_isr_Core_IO.UserDefinedErrors.SocketConnectionError, _
+            ThisWorkbook.VBProject.Name & "." & TypeName(Me) & ".OpenConnection", _
             Winsock.LastErrorMessage(" Last error: ")
     Else
         This.Connected = True
@@ -320,8 +320,8 @@ Public Function CloseConnection() As Boolean
     
     If p_result = wsock32.ws32_SOCKET_ERROR Then
         CloseConnection = False
-        cc_isr_Core.UserDefinedErrors.RaiseError cc_isr_Core.UserDefinedErrors.SocketDisconnectionError, _
-            "cc_isr_Winsock.IPv4StreamSocket.CloseConnection", _
+        cc_isr_Core_IO.UserDefinedErrors.RaiseError cc_isr_Core_IO.UserDefinedErrors.SocketDisconnectionError, _
+            ThisWorkbook.VBProject.Name & "." & TypeName(Me) & ".CloseConnection", _
             Winsock.LastErrorMessage(" Last error: ")
     Else
         This.Connected = False
@@ -349,8 +349,8 @@ Public Function BindTo(ByVal a_address As Long, ByVal a_port As Long) As Boolean
     p_bindResult = bind_(Me.SocketId, p_endpoint, 16)
     
     If p_bindResult = wsock32.ws32_SOCKET_ERROR Then
-        cc_isr_Core.UserDefinedErrors.RaiseError cc_isr_Core.UserDefinedErrors.SocketDisconnectionError, _
-            "cc_isr_Winsock.IPv4StreamSocket.BindTo", _
+        cc_isr_Core_IO.UserDefinedErrors.RaiseError cc_isr_Core_IO.UserDefinedErrors.SocketDisconnectionError, _
+            ThisWorkbook.VBProject.Name & "." & TypeName(Me) & ".BindTo", _
             Winsock.LastErrorMessage(" Last error: ")
         This.Connected = False
     Else
@@ -376,8 +376,8 @@ Public Function StartListening(Optional ByVal a_backlog As Integer = 10) As Bool
     p_listenResult = listen_(Me.SocketId, a_backlog)
     
     If p_listenResult = wsock32.ws32_SOCKET_ERROR Then
-        cc_isr_Core.UserDefinedErrors.RaiseError cc_isr_Core.UserDefinedErrors.SocketListenError, _
-            "cc_isr_Winsock.IPv4StreamSocket.Listen", _
+        cc_isr_Core_IO.UserDefinedErrors.RaiseError cc_isr_Core_IO.UserDefinedErrors.SocketListenError, _
+            ThisWorkbook.VBProject.Name & "." & TypeName(Me) & ".StartListening", _
             Winsock.LastErrorMessage(" Last error: ")
         This.Listening = False
     Else
@@ -416,8 +416,8 @@ Public Function AcceptTcpClient(ByVal a_serverSocket As IPv4StreamSocket, _
     p_socketId = accept_(a_serverSocket.SocketId, p_socketAddress, wsock32.ws32_SocketAddressLen)
     
     If p_socketId = wsock32.ws32_INVALID_SOCKET Then
-        cc_isr_Core.UserDefinedErrors.RaiseError cc_isr_Core.UserDefinedErrors.SocketListenError, _
-            "cc_isr_Winsock.IPv4StreamSocket.AcceptTcpClient", _
+        cc_isr_Core_IO.UserDefinedErrors.RaiseError cc_isr_Core_IO.UserDefinedErrors.SocketListenError, _
+            ThisWorkbook.VBProject.Name & "." & TypeName(Me) & ".AcceptTcpClient", _
             Winsock.LastErrorMessage(" Last error: ")
         Exit Function
     End If
@@ -444,13 +444,13 @@ Public Function SendMessage(ByVal a_message As String) As Long
         
         If p_sentLength < 0 Then
             ' if the sent length is negative, we have an API error.
-            cc_isr_Core.UserDefinedErrors.RaiseError cc_isr_Core.UserDefinedErrors.SocketSendError, _
-                "cc_isr_Winsock.IPv4StreamSocket.SendMessage", _
+            cc_isr_Core_IO.UserDefinedErrors.RaiseError cc_isr_Core_IO.UserDefinedErrors.SocketSendError, _
+                ThisWorkbook.VBProject.Name & "." & TypeName(Me) & ".SendMessage", _
                 Winsock.LastErrorMessage(" Last error: ")
             SendMessage = SEND_MESSAGE_ERROR
         ElseIf p_sentLength <> p_messageLength Then
-            cc_isr_Core.UserDefinedErrors.RaiseError cc_isr_Core.UserDefinedErrors.SocketSendError, _
-                "cc_isr_Winsock.IPv4StreamSocket.SendMessage", _
+            cc_isr_Core_IO.UserDefinedErrors.RaiseError cc_isr_Core_IO.UserDefinedErrors.SocketSendError, _
+                ThisWorkbook.VBProject.Name & "." & TypeName(Me) & ".SendMessage", _
                 " A partial message was sent: " & VBA.CStr(p_sentLength) & " out of " & VBA.CStr(p_messageLength)
             SendMessage = SEND_PARTIAL_MESSAGE_ERROR
         Else
@@ -530,8 +530,8 @@ Public Function ReceiveRaw(Optional ByVal a_maxLength As Long = &H7FFFF, _
         p_count = recv_(Me.SocketId, c, 1, 0)
         
         If p_count < 1 Then
-            cc_isr_Core.UserDefinedErrors.RaiseError cc_isr_Core.UserDefinedErrors.SocketReceiveError, _
-                "cc_isr_Winsock.IPv4StreamSocket.ReceiveRaw", _
+            cc_isr_Core_IO.UserDefinedErrors.RaiseError cc_isr_Core_IO.UserDefinedErrors.SocketReceiveError, _
+                ThisWorkbook.VBProject.Name & "." & TypeName(Me) & ".ReceiveRaw", _
                 Winsock.LastErrorMessage(" Last error: ")
             Exit Do
         ElseIf c = a_termination Then
@@ -600,8 +600,8 @@ Public Sub SetReceiveTimeout(ByVal a_timeoutMs As Long)
         p_result = setsockopt_(This.SocketId, wsock32.ws32_SOL_SOCKET, wsock32.ws32_SO_RCVTIMEO, a_timeoutMs, 4)
     
         If p_result = wsock32.ws32_SOCKET_ERROR Then
-            cc_isr_Core.UserDefinedErrors.RaiseError cc_isr_Core.UserDefinedErrors.SocketReceiveError, _
-                "cc_isr_Winsock.IPv4StreamSocket.SetReceiveTimeout", _
+            cc_isr_Core_IO.UserDefinedErrors.RaiseError cc_isr_Core_IO.UserDefinedErrors.SocketReceiveError, _
+                ThisWorkbook.VBProject.Name & "." & TypeName(Me) & ".SetReceiveTimeout", _
                 Winsock.LastErrorMessage(" Last error: ")
         Else
             This.ReceiveTimeout = a_timeoutMs

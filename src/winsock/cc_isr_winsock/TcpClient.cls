@@ -41,8 +41,8 @@ End Sub
 Public Function Initialize(ByVal a_connectedSocket As IPv4StreamSocket) As TcpClient
     
     If Me.Connected Then
-        cc_isr_Core.UserDefinedErrors.RaiseError cc_isr_Core.UserDefinedErrors.InvalidOperationError, _
-            "cc_isr_Winsock.TcpClient.WinsockApi.Initialize", _
+        cc_isr_Core_IO.UserDefinedErrors.RaiseError cc_isr_Core_IO.UserDefinedErrors.InvalidOperationError, _
+            ThisWorkbook.VBProject.Name & "." & TypeName(Me) & ".Initialize", _
             " This Tc Client is connected to " & Me.TcpClientSocket.SocketAddress & _
             " A new Tcp Client must be used when initialized using a connected socket at " & _
             a_connectedSocket.SocketAddress & "."

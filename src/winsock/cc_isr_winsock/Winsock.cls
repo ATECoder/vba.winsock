@@ -101,8 +101,8 @@ Public Function Initialize() As Long
     p_result = WSAStartup(wsock32.ws32_VERSION, p_startUpInfo)
     
     If p_result <> 0 Then
-        cc_isr_Core.UserDefinedErrors.RaiseError cc_isr_Core.UserDefinedErrors.WinsockStartingError, _
-            "cc_isr_Winsock.Winsock.Initialize", _
+        cc_isr_Core_IO.UserDefinedErrors.RaiseError cc_isr_Core_IO.UserDefinedErrors.WinsockStartingError, _
+            ThisWorkbook.VBProject.Name & "." & TypeName(Me) & ".Initialize", _
             Winsock.LastErrorMessage(" Last error: ")
     End If
     This.Initiated = (p_result = 0)
@@ -223,8 +223,9 @@ Public Function Cleanup() As Long
     
     p_result = WSACleanup()
     If p_result = wsock32.ws32_SOCKET_ERROR Then
-        cc_isr_Core.UserDefinedErrors.RaiseError cc_isr_Core.UserDefinedErrors.WinsockCleanupError, _
-                "cc_isr_Winsock.Winsock.Cleanup", Winsock.LastErrorMessage(" Last error: ")
+        cc_isr_Core_IO.UserDefinedErrors.RaiseError cc_isr_Core_IO.UserDefinedErrors.WinsockCleanupError, _
+                ThisWorkbook.VBProject.Name & "." & TypeName(Me) & ".Cleanup", _
+                Winsock.LastErrorMessage(" Last error: ")
     End If
     Cleanup = p_result
 
@@ -247,8 +248,9 @@ Public Sub Dispose()
         ' Shutdown Winsock DLL
         Dim p_result As Long: p_result = WSACleanup()
         If p_result = wsock32.ws32_SOCKET_ERROR Then
-            cc_isr_Core.UserDefinedErrors.RaiseError cc_isr_Core.UserDefinedErrors.WinsockCleanupError, _
-                "cc_isr_Winsock.Winsock.Dispose", Winsock.LastErrorMessage(" Last error: ")
+            cc_isr_Core_IO.UserDefinedErrors.RaiseError cc_isr_Core_IO.UserDefinedErrors.WinsockCleanupError, _
+                ThisWorkbook.VBProject.Name & "." & TypeName(Me) & ".Dispose", _
+                Winsock.LastErrorMessage(" Last error: ")
                       
         End If
     End If

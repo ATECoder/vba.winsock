@@ -72,9 +72,9 @@ Finally:
     If Not Err Is Nothing Then
         If Err.Number <> 0 Then
             PingPort = False
-            ThisWorkbook.SetErrSource p_procedureName, "Net"
+            cc_isr_Core_IO.ErrorMessageBuilder.SetErrSource p_procedureName, "Net"
             a_details = "Error connecting to " & a_host & ":" & VBA.CStr(a_port) & ". " & _
-                        ThisWorkbook.BuildStandardErrorMessage()
+                        cc_isr_Core_IO.ErrorMessageBuilder.BuildStandardErrorMessage()
         End If
     End If
     
