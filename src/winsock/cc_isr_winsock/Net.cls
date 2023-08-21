@@ -84,10 +84,10 @@ Finally:
     
         If p_socket.Connected Then
             
-            Dim p_stopper As Stopwatch: Set p_stopper = cc_isr_Core.Factory.NewStopwatch
-            p_stopper.Wait 5
+            cc_isr_Core_IO.Factory.NewStopwatch.Wait 5
             
             p_socket.CloseConnection
+        
         End If
     
     End If

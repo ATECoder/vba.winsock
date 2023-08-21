@@ -28,7 +28,7 @@ Private Const m_averageElapsedTimeCell As String = "H3"
 Private Const m_elapsedTimeCell As String = "H4"
 Private Const m_elapsedTimeFormat As String = "0.0"
 Private Const m_identityCell As String = "H2"
-Private m_delayStopper As cc_isr_Core.Stopwatch
+Private m_delayStopper As cc_isr_Core_IO.Stopwatch
 
 ''' <summary>   Reads the identity form the instrument with the
 ''' IP address and port defined in the parent sheet. </summary>
@@ -39,7 +39,7 @@ Private Sub ReadIdentityButton_Click()
     Dim p_repeatCount As Integer: p_repeatCount = Range(m_repeatCountCell).value
     Dim p_timeout As Integer: p_timeout = Range(m_receiveTimeoutCell).value
     
-    Set m_delayStopper = cc_isr_Core.Factory.NewStopwatch
+    Set m_delayStopper = cc_isr_Core_IO.Factory.NewStopwatch
     
     If Me.UsingWinsockReadRawButton.value Then
         ' read identity using basic winsock.
@@ -78,7 +78,7 @@ Private Sub ReadIdentity(ByVal a_host As String, ByVal a_port As Long, ByVal a_r
     Dim p_sentCount As Integer
     Dim p_readCount As Integer
     
-    Dim p_stopper As Stopwatch: Set p_stopper = cc_isr_Core.Factory.NewStopwatch
+    Dim p_stopper As Stopwatch: Set p_stopper = cc_isr_Core_IO.Factory.NewStopwatch
     Dim p_socket As IPv4StreamSocket
     Set p_socket = cc_isr_Winsock.Factory.NewIPv4StreamSocket()
     Dim p_totalMilliseconds As Double
@@ -231,7 +231,7 @@ Private Sub ReadIdentityUsingBuffer(ByVal a_host As String, ByVal a_port As Long
     Dim p_sentCount As Integer
     Dim p_readCount As Integer
     
-    Dim p_stopper As Stopwatch: Set p_stopper = cc_isr_Core.Factory.NewStopwatch
+    Dim p_stopper As Stopwatch: Set p_stopper = cc_isr_Core_IO.Factory.NewStopwatch
     Dim p_socket As IPv4StreamSocket
     Set p_socket = cc_isr_Winsock.Factory.NewIPv4StreamSocket()
     Dim p_totalMilliseconds As Double
@@ -380,7 +380,7 @@ Private Sub TcpClientReadIdentity(ByVal a_host As String, ByVal a_port As Long, 
     Range(m_elapsedTimeCell).value = vbNullString
     Range(m_errorMessageCell).value = vbNullString
 
-    Dim p_stopper As Stopwatch: Set p_stopper = cc_isr_Core.Factory.NewStopwatch
+    Dim p_stopper As Stopwatch: Set p_stopper = cc_isr_Core_IO.Factory.NewStopwatch
     Dim p_totalMilliseconds As Double
     
     Dim p_sentCount As Integer
