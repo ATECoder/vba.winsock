@@ -13,11 +13,11 @@ Attribute VB_Exposed = True
 
 Option Explicit
 
-Private Type ThisData
+Private Type this_
     Connected As Boolean
 End Type
 
-Private This As ThisData
+Private This As this_
 
 ''' <summary>   Initializes and return the event arguments. </summary>
 ''' <para name="a_isConnected">   [Boolean, False] The connection state. </param>

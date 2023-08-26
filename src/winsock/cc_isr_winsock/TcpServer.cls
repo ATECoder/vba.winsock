@@ -13,11 +13,11 @@ Attribute VB_Exposed = True
 
 Option Explicit
 
-Private Type ThisData
+Private Type this_
     TcpServerSocket As IPv4StreamSocket
 End Type
 
-Private This As ThisData
+Private This As this_
 
 ''' <summary>   The event that is raised upon change of connection. </summary>
 ''' <param name="a_eventArgs">   An <see cref="cc_isr_Winsock.ConnectionChangedEventArgs"/> event args. </param>

@@ -13,7 +13,7 @@ Attribute VB_Exposed = True
 
 Option Explicit
 
-Private Type ThisData
+Private Type this_
 
     ' true if Winsock was initiated
     Initiated As Boolean
@@ -26,7 +26,7 @@ Private Type ThisData
 
 End Type
 
-Private This As ThisData
+Private This As this_
 
 ''' <summary>   Initiates use of the Winsock DLL by a process. </summary>
 ''' <param name="a_version">   [Long] Specifies the Winsock version. </param>

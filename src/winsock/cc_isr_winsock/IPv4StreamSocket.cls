@@ -153,7 +153,7 @@ Private Declare PtrSafe Function recv_ Lib "wsock32.dll" Alias "recv" ( _
         ByVal a_socketId As Long, ByVal a_buffer As String, ByVal a_bufferLength As Long, _
         ByVal a_flags As Long) As Long
 
-Private Type ThisData
+Private Type this_
     SocketPort As Long
     socketHost As String
     SocketAddress As String
@@ -164,7 +164,7 @@ Private Type ThisData
     FdSet As wsock32.ws32_fd_set
 End Type
 
-Private This As ThisData
+Private This As this_
 
 ''' <summary>   Initializes an internet protocol Stream Socket with a socket id. </summary>
 Private Sub Class_Initialize()
