@@ -34,14 +34,14 @@ Private m_delayStopper As cc_isr_Core_IO.Stopwatch
 ''' IP address and port defined in the parent sheet. </summary>
 Private Sub ReadIdentityButton_Click()
 
-    Dim p_host As String: p_host = Range(m_inputHostCell).value
-    Dim p_port As Integer: p_port = Range(m_inputPortCell).value
-    Dim p_repeatCount As Integer: p_repeatCount = Range(m_repeatCountCell).value
-    Dim p_timeout As Integer: p_timeout = Range(m_receiveTimeoutCell).value
+    Dim p_host As String: p_host = Range(m_inputHostCell).Value
+    Dim p_port As Integer: p_port = Range(m_inputPortCell).Value
+    Dim p_repeatCount As Integer: p_repeatCount = Range(m_repeatCountCell).Value
+    Dim p_timeout As Integer: p_timeout = Range(m_receiveTimeoutCell).Value
     
     Set m_delayStopper = cc_isr_Core_IO.Factory.NewStopwatch
     
-    If Me.UsingWinsockReadRawButton.value Then
+    If Me.UsingWinsockReadRawButton.Value Then
         ' read identity using basic winsock.
         ReadIdentity p_host, p_port, p_repeatCount, p_timeout
     ElseIf Me.UsingTcpClientOptionButton Then
@@ -67,13 +67,13 @@ Private Sub ReadIdentity(ByVal a_host As String, ByVal a_port As Long, ByVal a_r
     On Error GoTo Finally
     
     Range(m_socketAddressCell) = vbNullString
-    Range(m_connectedSocketIdCell).value = vbNullString
-    Range(m_connectedCell).value = vbNullString
-    Range(m_sentMessageCell).value = vbNullString
-    Range(m_receivedMessageLengthCell).value = vbNullString
-    Range(m_receivedMessageCell).value = vbNullString
-    Range(m_elapsedTimeCell).value = vbNullString
-    Range(m_errorMessageCell).value = vbNullString
+    Range(m_connectedSocketIdCell).Value = vbNullString
+    Range(m_connectedCell).Value = vbNullString
+    Range(m_sentMessageCell).Value = vbNullString
+    Range(m_receivedMessageLengthCell).Value = vbNullString
+    Range(m_receivedMessageCell).Value = vbNullString
+    Range(m_elapsedTimeCell).Value = vbNullString
+    Me.LastError = vbNullString
 
     Dim p_sentCount As Integer
     Dim p_readCount As Integer
@@ -84,16 +84,16 @@ Private Sub ReadIdentity(ByVal a_host As String, ByVal a_port As Long, ByVal a_r
     Dim p_totalMilliseconds As Double
     
     ' report the socket number
-    Range(m_connectedSocketIdCell).value = p_socket.SocketId
+    Range(m_connectedSocketIdCell).Value = p_socket.SocketId
     
     p_socket.OpenConnection a_host, a_port
     
     ' report the connection state
-    Range(m_connectedCell).value = p_socket.Connected
+    Range(m_connectedCell).Value = p_socket.Connected
     
     If a_repeatCount > 0 And p_socket.Connected Then
     
-        Range(m_socketAddressCell).value = p_socket.SocketAddress
+        Range(m_socketAddressCell).Value = p_socket.SocketAddress
     
         Dim p_command As String
     
@@ -125,7 +125,7 @@ Private Sub ReadIdentity(ByVal a_host As String, ByVal a_port As Long, ByVal a_r
         End If
         
         p_command = "*IDN?"
-        Range(m_sentMessageCell).value = p_command
+        Range(m_sentMessageCell).Value = p_command
        
         Dim p_loopCount As Integer
         Do While p_loopCount < a_repeatCount
@@ -145,29 +145,30 @@ Private Sub ReadIdentity(ByVal a_host As String, ByVal a_port As Long, ByVal a_r
     
             p_totalMilliseconds = p_totalMilliseconds + p_stopper.ElapsedMilliseconds
             
-            Range(m_receivedMessageLengthCell).value = Len(p_identity)
-            Range(m_receivedMessageCell).value = p_identity
+            Range(m_receivedMessageLengthCell).Value = Len(p_identity)
+            Range(m_receivedMessageCell).Value = p_identity
     
         Loop
   
-        Range(m_averageElapsedTimeCell).value = Format(p_totalMilliseconds / p_loopCount, m_elapsedTimeFormat) + " ms"
-        Range(m_elapsedTimeCell).value = Format(p_totalMilliseconds, m_elapsedTimeFormat) + " ms"
+        Range(m_averageElapsedTimeCell).Value = Format(p_totalMilliseconds / p_loopCount, m_elapsedTimeFormat) + " ms"
+        Range(m_elapsedTimeCell).Value = Format(p_totalMilliseconds, m_elapsedTimeFormat) + " ms"
     
     ElseIf a_repeatCount <= 0 Then
     
-        Range(m_receivedMessageCell).value = "testing connect and disconnect; disconnected."
+        Range(m_receivedMessageCell).Value = "testing connect and disconnect; disconnected."
         
     Else
-        Range(m_errorMessageCell).value = "connection failed without reporting an exception"
+        
+        Me.LastError = "connection failed without reporting an exception"
+        
     End If
     
 Finally:
 
-    Dim p_errorMessage As String
     If Not Err Is Nothing Then
         If Err.Number <> 0 Then
             cc_isr_Core_IO.ErrorMessageBuilder.AppendErrSource p_procedureName, Me.Name, ThisWorkbook
-            p_errorMessage = "Reading identity failed. " & cc_isr_Core_IO.ErrorMessageBuilder.BuildStandardErrorMessage()
+            cc_isr_Core_IO.UserDefinedErrors.EnqueueErrorObject a_suffix:="Reading identity failed."
         End If
     End If
     
@@ -196,9 +197,7 @@ Finally:
     ' terminate the socket, which should release the Winsock dll.
     Set p_socket = Nothing
     
-    If Len(p_errorMessage) > 0 Then
-        Range(m_errorMessageCell).value = p_errorMessage
-    End If
+    Me.TraceErrorQueue
     
     On Error GoTo 0
     
@@ -217,13 +216,13 @@ Private Sub ReadIdentityUsingBuffer(ByVal a_host As String, ByVal a_port As Long
     On Error GoTo Finally
     
     Range(m_socketAddressCell) = vbNullString
-    Range(m_connectedSocketIdCell).value = vbNullString
-    Range(m_connectedCell).value = vbNullString
-    Range(m_sentMessageCell).value = vbNullString
-    Range(m_receivedMessageLengthCell).value = vbNullString
-    Range(m_receivedMessageCell).value = vbNullString
-    Range(m_elapsedTimeCell).value = vbNullString
-    Range(m_errorMessageCell).value = vbNullString
+    Range(m_connectedSocketIdCell).Value = vbNullString
+    Range(m_connectedCell).Value = vbNullString
+    Range(m_sentMessageCell).Value = vbNullString
+    Range(m_receivedMessageLengthCell).Value = vbNullString
+    Range(m_receivedMessageCell).Value = vbNullString
+    Range(m_elapsedTimeCell).Value = vbNullString
+    Me.LastError = vbNullString
 
     Dim p_maximumLength As Integer: p_maximumLength = 1024
     Dim p_buffer As String * 1024
@@ -237,17 +236,17 @@ Private Sub ReadIdentityUsingBuffer(ByVal a_host As String, ByVal a_port As Long
     Dim p_totalMilliseconds As Double
     
     ' report the socket number
-    Range(m_connectedSocketIdCell).value = p_socket.SocketId
+    Range(m_connectedSocketIdCell).Value = p_socket.SocketId
     
     p_socket.OpenConnection a_host, a_port
     
     ' report the connection state
-    Range(m_connectedCell).value = p_socket.Connected
+    Range(m_connectedCell).Value = p_socket.Connected
     
     If a_repeatCount > 0 And p_socket.Connected Then
     
         ' display the socket address
-        Range(m_socketAddressCell).value = p_socket.SocketAddress
+        Range(m_socketAddressCell).Value = p_socket.SocketAddress
         
         Dim p_command As String
     
@@ -281,7 +280,7 @@ Private Sub ReadIdentityUsingBuffer(ByVal a_host As String, ByVal a_port As Long
         End If
         
         p_command = "*IDN?"
-        Range(m_sentMessageCell).value = p_command
+        Range(m_sentMessageCell).Value = p_command
         
         Dim p_loopCount As Integer
         Do While p_loopCount < a_repeatCount
@@ -299,29 +298,28 @@ Private Sub ReadIdentityUsingBuffer(ByVal a_host As String, ByVal a_port As Long
     
             p_totalMilliseconds = p_totalMilliseconds + p_stopper.ElapsedMilliseconds
             
-            Range(m_receivedMessageLengthCell).value = p_readCount
-            Range(m_receivedMessageCell).value = p_buffer
+            Range(m_receivedMessageLengthCell).Value = p_readCount
+            Range(m_receivedMessageCell).Value = p_buffer
     
         Loop
   
-        Range(m_averageElapsedTimeCell).value = Format(p_totalMilliseconds / p_loopCount, m_elapsedTimeFormat) + " ms"
-        Range(m_elapsedTimeCell).value = Format(p_totalMilliseconds, m_elapsedTimeFormat) + " ms"
+        Range(m_averageElapsedTimeCell).Value = Format(p_totalMilliseconds / p_loopCount, m_elapsedTimeFormat) + " ms"
+        Range(m_elapsedTimeCell).Value = Format(p_totalMilliseconds, m_elapsedTimeFormat) + " ms"
     
     ElseIf a_repeatCount <= 0 Then
     
-        Range(m_receivedMessageCell).value = "testing connect and disconnect; disconnected."
+        Range(m_receivedMessageCell).Value = "testing connect and disconnect; disconnected."
         
     Else
-        Range(m_errorMessageCell).value = "connection failed without reporting an exception"
+        Me.LastError = "connection failed without reporting an exception"
     End If
     
 Finally:
 
-    Dim p_errorMessage As String
     If Not Err Is Nothing Then
         If Err.Number <> 0 Then
             cc_isr_Core_IO.ErrorMessageBuilder.AppendErrSource p_procedureName, Me.Name, ThisWorkbook
-            p_errorMessage = "Reading identity failed. " & cc_isr_Core_IO.ErrorMessageBuilder.BuildStandardErrorMessage
+            cc_isr_Core_IO.UserDefinedErrors.EnqueueErrorObject a_suffix:="Reading identity failed."
         End If
     End If
     
@@ -350,9 +348,7 @@ Finally:
     ' terminate the socket, which should release the Winsock dll.
     Set p_socket = Nothing
     
-    If Len(p_errorMessage) > 0 Then
-        Range(m_errorMessageCell).value = p_errorMessage
-    End If
+    Me.TraceErrorQueue
 
     On Error GoTo 0
 
@@ -372,13 +368,13 @@ Private Sub TcpClientReadIdentity(ByVal a_host As String, ByVal a_port As Long, 
     On Error GoTo Finally
     
     Range(m_socketAddressCell) = vbNullString
-    Range(m_connectedSocketIdCell).value = vbNullString
-    Range(m_connectedCell).value = vbNullString
-    Range(m_sentMessageCell).value = vbNullString
-    Range(m_receivedMessageLengthCell).value = vbNullString
-    Range(m_receivedMessageCell).value = vbNullString
-    Range(m_elapsedTimeCell).value = vbNullString
-    Range(m_errorMessageCell).value = vbNullString
+    Range(m_connectedSocketIdCell).Value = vbNullString
+    Range(m_connectedCell).Value = vbNullString
+    Range(m_sentMessageCell).Value = vbNullString
+    Range(m_receivedMessageLengthCell).Value = vbNullString
+    Range(m_receivedMessageCell).Value = vbNullString
+    Range(m_elapsedTimeCell).Value = vbNullString
+    Me.LastError = vbNullString
 
     Dim p_stopper As Stopwatch: Set p_stopper = cc_isr_Core_IO.Factory.NewStopwatch
     Dim p_totalMilliseconds As Double
@@ -390,15 +386,15 @@ Private Sub TcpClientReadIdentity(ByVal a_host As String, ByVal a_port As Long, 
     p_client.OpenConnection a_host, a_port
     
     ' report the socket number
-    Range(m_connectedSocketIdCell).value = p_client.TcpClientSocket.SocketId
+    Range(m_connectedSocketIdCell).Value = p_client.TcpClientSocket.SocketId
    
     ' report the connection state
-    Range(m_connectedCell).value = p_client.Connected
+    Range(m_connectedCell).Value = p_client.Connected
     
     If a_repeatCount > 0 And p_client.Connected Then
     
         ' display the socket address.
-        Range(m_socketAddressCell).value = p_client.TcpClientSocket.SocketAddress
+        Range(m_socketAddressCell).Value = p_client.TcpClientSocket.SocketAddress
         
         Dim p_command As String
     
@@ -434,7 +430,7 @@ Private Sub TcpClientReadIdentity(ByVal a_host As String, ByVal a_port As Long, 
         End If
         
         p_command = "*IDN?"
-        Range(m_sentMessageCell).value = p_command
+        Range(m_sentMessageCell).Value = p_command
         
         Dim p_loopCount As Integer
         Do While p_loopCount < a_repeatCount
@@ -454,29 +450,28 @@ Private Sub TcpClientReadIdentity(ByVal a_host As String, ByVal a_port As Long, 
     
             p_totalMilliseconds = p_totalMilliseconds + p_stopper.ElapsedMilliseconds
             
-            Range(m_receivedMessageLengthCell).value = Len(p_identity)
-            Range(m_receivedMessageCell).value = p_identity
+            Range(m_receivedMessageLengthCell).Value = Len(p_identity)
+            Range(m_receivedMessageCell).Value = p_identity
     
         Loop
   
-        Range(m_averageElapsedTimeCell).value = Format(p_totalMilliseconds / p_loopCount, m_elapsedTimeFormat) + " ms"
-        Range(m_elapsedTimeCell).value = Format(p_totalMilliseconds, m_elapsedTimeFormat) + " ms"
+        Range(m_averageElapsedTimeCell).Value = Format(p_totalMilliseconds / p_loopCount, m_elapsedTimeFormat) + " ms"
+        Range(m_elapsedTimeCell).Value = Format(p_totalMilliseconds, m_elapsedTimeFormat) + " ms"
     
     ElseIf a_repeatCount <= 0 Then
     
-        Range(m_receivedMessageCell).value = "testing connect and disconnect; disconnected."
+        Range(m_receivedMessageCell).Value = "testing connect and disconnect; disconnected."
         
     Else
-        Range(m_errorMessageCell).value = "connection failed without reporting an exception"
+        Me.LastError = "connection failed without reporting an exception"
     End If
     
 Finally:
 
-    Dim p_errorMessage As String
     If Not Err Is Nothing Then
         If Err.Number <> 0 Then
             cc_isr_Core_IO.ErrorMessageBuilder.AppendErrSource p_procedureName, Me.Name, ThisWorkbook
-            p_errorMessage = "Reading identity failed using Tcp Client. " & cc_isr_Core_IO.ErrorMessageBuilder.BuildStandardErrorMessage
+            cc_isr_Core_IO.UserDefinedErrors.EnqueueErrorObject a_suffix:="Reading identity failed."
         End If
     End If
     
@@ -504,12 +499,25 @@ Finally:
     ' terminate the client
     Set p_client = Nothing
     
-    If Len(p_errorMessage) > 0 Then
-        Range(m_errorMessageCell).value = p_errorMessage
-    End If
+    Me.TraceErrorQueue
 
     On Error GoTo 0
 
 End Sub
 
+''' <summary>   Displays the last error. </summary>
+Public Property Let LastError(ByVal a_value As String)
+    
+    Range(m_errorMessageCell).Value = a_value
+
+End Property
+
+''' <summary>   Dequeues and displays the
+''' <see cref="cc_isr_Core_IO.UserDefinedErrors.ErrorsQueue">errors queue</see>. </summary>
+Public Sub TraceErrorQueue()
+    
+    If cc_isr_Core_IO.UserDefinedErrors.ErrorsQueue.Count > 0 Then _
+        Me.LastError = cc_isr_Core_IO.ErrorMessageBuilder.BuildStandardErrorMessage(VBA.vbCrLf)
+
+End Sub
 

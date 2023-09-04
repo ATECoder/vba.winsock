@@ -5,6 +5,92 @@ Attribute VB_Name = "IPv4StreamSocketTests"
 
 Option Explicit
 
+Private Type this_
+    TestNumber As Integer
+    BeforeAllAssert As Assert
+    BeforeEachAssert As Assert
+    ErrTracer As IErrTracer
+End Type
+
+Private This As this_
+
+Public Sub RunTest(ByVal a_testNumber As Integer)
+    BeforeEach
+    Select Case a_testNumber
+        Case 1
+            TestCreateSocket
+        Case Else
+    End Select
+    AfterEach
+End Sub
+
+Public Sub RunOneTest()
+    BeforeAll
+    RunTest 1
+    AfterAll
+End Sub
+
+Public Sub RunAllTests()
+    BeforeAll
+    Dim p_testNumber As Integer
+    For p_testNumber = 1 To 1
+        RunTest p_testNumber
+        DoEvents
+    Next p_testNumber
+    AfterAll
+End Sub
+
+Public Sub BeforeAll()
+
+    This.TestNumber = 0
+    Set This.BeforeAllAssert = Assert.IsTrue(True, "initialize the overall assert.")
+    
+    ' clear the error state.
+    cc_isr_Core_IO.UserDefinedErrors.ClearErrorState
+    
+    Set This.ErrTracer = New ErrTracer
+    
+End Sub
+
+Public Sub BeforeEach()
+
+    If This.BeforeAllAssert.AssertSuccessful Or This.TestNumber > 0 Then
+        
+        Set This.BeforeEachAssert = Assert.IsTrue(True, "initialize the pre-test assert.")
+    
+    Else
+    
+        Set This.BeforeEachAssert = Assert.Inconclusive(This.BeforeAllAssert.AssertMessage)
+    
+    End If
+    
+    ' clear the error state.
+    cc_isr_Core_IO.UserDefinedErrors.ClearErrorState
+    
+    If This.BeforeEachAssert.AssertSuccessful Then
+    
+        Set This.BeforeEachAssert = Assert.AreEqual(0, Err.Number, _
+            "Error Number should be 0.")
+            
+    End If
+    
+    This.TestNumber = This.TestNumber + 1
+                        
+End Sub
+
+Public Sub AfterEach()
+    
+    Set This.BeforeEachAssert = Nothing
+
+End Sub
+
+Public Sub AfterAll()
+    
+    Set This.BeforeAllAssert = Nothing
+
+End Sub
+
+
 ''' <summary>   Unit test. Asserts creating a socket. </summary>
 ''' <returns>   An <see cref="Assert"/>   instance of <see cref="Assert.AssertSuccessful"/>   True if the test passed. </returns>
 Public Function TestCreateSocket() As Assert
@@ -53,6 +139,9 @@ Public Function TestCreateSocket() As Assert
     End If
        
     Set p_socket = Nothing
+    
+    If p_outcome.AssertSuccessful Then _
+        Set p_outcome = This.ErrTracer.AssertLeftoverErrors
     
     Debug.Print p_outcome.BuildReport("TestCreateSocket")
     
