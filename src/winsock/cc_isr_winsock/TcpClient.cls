@@ -15,6 +15,13 @@ Option Explicit
 
 Implements IConnectable
 
+Private Type this_
+    TcpClientSocket As IPv4StreamSocket
+End Type
+
+Private This As this_
+
+''' <summary>   The <see cref="TcpClientSocket"/> event handler. </summary>
 Private m_tcpClientSocket As IPv4StreamSocket
 
 ''' <summary>   The event that is raised upon change of connection. </summary>
@@ -43,15 +50,16 @@ Public Function Initialize(ByVal a_connectedSocket As IPv4StreamSocket) As TcpCl
     If Me.Connected Then
         cc_isr_Core_IO.UserDefinedErrors.RaiseError cc_isr_Core_IO.UserDefinedErrors.InvalidOperationError, _
             ThisWorkbook.VBProject.Name & "." & TypeName(Me) & ".Initialize", _
-            " This Tc Client is connected to " & Me.TcpClientSocket.SocketAddress & _
+            " This Tc Client is connected to " & This.TcpClientSocket.SocketAddress & _
             " A new Tcp Client must be used when initialized using a connected socket at " & _
             a_connectedSocket.SocketAddress & "."
     End If
     
     ' remove this socket
-    If Not m_tcpClientSocket Is Nothing Then Set m_tcpClientSocket = Nothing
+    If Not This.TcpClientSocket Is Nothing Then Set This.TcpClientSocket = Nothing
     
-    Set m_tcpClientSocket = a_connectedSocket
+    Set This.TcpClientSocket = a_connectedSocket
+    Set m_tcpClientSocket = This.TcpClientSocket
     
     Set Initialize = Me
     
@@ -60,14 +68,14 @@ End Function
 ''' <summary>   Gets the Tcp Client socket. </summary>
 ''' <value>   [<see cref="IPv4StreamSocket"/>]. </value>
 Public Property Get TcpClientSocket() As IPv4StreamSocket
-    Set TcpClientSocket = m_tcpClientSocket
+    Set TcpClientSocket = This.TcpClientSocket
 End Property
 
 ''' <summary>   Sends a terminated message to the server. </summary>
 ''' <param name="a_message">   [String] The message. </param>
 ''' <returns>   [Long] The number of bytes that were sent to the server. </returns>
 Public Function SendMessage(ByVal a_message As String) As Long
-    SendMessage = Me.TcpClientSocket.SendMessage(a_message)
+    SendMessage = This.TcpClientSocket.SendMessage(a_message)
 End Function
 
 ''' <summary>   Receives a message from the server. </summary>
@@ -75,7 +83,7 @@ End Function
 ''' <returns>   [String] The received characters. </returns>
 Public Function ReceiveBytes(ByVal a_maxLength As Long) As String
     
-    ReceiveBytes = Me.TcpClientSocket.ReceiveBytes(a_maxLength)
+    ReceiveBytes = This.TcpClientSocket.ReceiveBytes(a_maxLength)
 
 End Function
 
@@ -85,7 +93,7 @@ End Function
 ''' <returns>   The received characters. </returns>
 Public Function ReceiveString(Optional ByVal a_bufferSize As Integer = 1024) As String
     
-    ReceiveString = Me.TcpClientSocket.ReceiveString(a_bufferSize)
+    ReceiveString = This.TcpClientSocket.ReceiveString(a_bufferSize)
 
 End Function
 
@@ -99,7 +107,7 @@ Public Function ReceiveRaw(Optional ByVal a_maxLength As Long = &H7FFF, _
                            Optional ByVal a_trimEnd As Boolean = True, _
                            Optional ByVal a_termination As String = vbLf) As String
     
-    ReceiveRaw = Me.TcpClientSocket.ReceiveRaw(a_maxLength, a_trimEnd, a_termination)
+    ReceiveRaw = This.TcpClientSocket.ReceiveRaw(a_maxLength, a_trimEnd, a_termination)
   
 End Function
 
@@ -117,7 +125,7 @@ Public Function QueryRaw(ByVal a_message As String, _
                          Optional ByVal a_termination As String = vbLf) As String
     
     If Me.SendMessage(a_message) > 0 Then
-        QueryRaw = Me.TcpClientSocket.ReceiveRaw(a_maxLength, a_trimEnd, a_termination)
+        QueryRaw = This.TcpClientSocket.ReceiveRaw(a_maxLength, a_trimEnd, a_termination)
     Else
         QueryRaw = vbNullString
     End If
@@ -139,10 +147,10 @@ End Property
 ''' <summary>   Returns true if a connection can be made. </summary>
 ''' <value>   [Boolean] True if a connection can be made. </value>
 Private Property Get IConnectable_CanConnect() As Boolean
-    If m_tcpClientSocket Is Nothing Then
+    If This.TcpClientSocket Is Nothing Then
         IConnectable_CanConnect = False
     Else
-        IConnectable_CanConnect = Not m_tcpClientSocket.Connected
+        IConnectable_CanConnect = Not This.TcpClientSocket.Connected
     End If
 End Property
 
@@ -156,10 +164,10 @@ End Property
 ''' <value>   [Boolean] True if the socket is connected; otherwise, False. </value>
 Private Property Get IConnectable_Connected() As Boolean
     
-    If m_tcpClientSocket Is Nothing Then
+    If This.TcpClientSocket Is Nothing Then
         IConnectable_Connected = False
     Else
-        IConnectable_Connected = Me.TcpClientSocket.Connected
+        IConnectable_Connected = This.TcpClientSocket.Connected
     End If
 
 End Property
@@ -178,7 +186,8 @@ Private Sub IConnectable_Dispose()
     
     If Not p_disconnected Then p_disconnected = IConnectable_CloseConnection()
     
-    If p_disconnected And Not m_tcpClientSocket Is Nothing Then Set m_tcpClientSocket = Nothing
+    Set m_tcpClientSocket = Nothing
+    Set This.TcpClientSocket = Nothing
     
     On Error GoTo 0
 
@@ -213,12 +222,13 @@ Private Function IConnectable_OpenConnection(ByVal a_host As String, ByVal a_por
     
         ' a new socket must be created on each connection because closing a socket
         ' releases the socket, which can then be used by the system as soon as it is released.
-        Set m_tcpClientSocket = New IPv4StreamSocket
+        Set This.TcpClientSocket = New IPv4StreamSocket
+        Set m_tcpClientSocket = This.TcpClientSocket
     
-        Me.TcpClientSocket.OpenConnection a_host, a_port
+        This.TcpClientSocket.OpenConnection a_host, a_port
         
-        If Me.TcpClientSocket.Connected Then
-            Me.TcpClientSocket.SetReceiveTimeout a_timeoutMs
+        If This.TcpClientSocket.Connected Then
+            This.TcpClientSocket.SetReceiveTimeout a_timeoutMs
         End If
         
         OnConnectionChanged Me.Connected
@@ -228,8 +238,6 @@ Private Function IConnectable_OpenConnection(ByVal a_host As String, ByVal a_por
     IConnectable_OpenConnection = Me.Connected
     
 End Function
-
-
 
 ''' <summary>   Closes the connection and returns true if not connected. </summary>
 ''' <returns>   [Boolean] True if disconnection succeeded; otherwise, false. </returns>
@@ -247,11 +255,12 @@ Private Function IConnectable_CloseConnection() As Boolean
     
     If Not p_eventArgs.Cancel Then
     
-        Me.TcpClientSocket.CloseConnection
+        This.TcpClientSocket.CloseConnection
         
         ' the socket must be disposed here because it cannot be used after
         ' the connection is closed.
         Set m_tcpClientSocket = Nothing
+        Set This.TcpClientSocket = Nothing
         
         OnConnectionChanged Me.Connected
             
