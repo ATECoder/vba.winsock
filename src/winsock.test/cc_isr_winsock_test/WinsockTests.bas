@@ -5,7 +5,9 @@ Attribute VB_Name = "WinsockTests"
 
 Option Explicit
 
+''' <summary>   This class properties. </summary>
 Private Type this_
+    Name As String
     TestNumber As Integer
     BeforeAllAssert As Assert
     BeforeEachAssert As Assert
@@ -14,6 +16,7 @@ End Type
 
 Private This As this_
 
+''' <summary>   Runs the specified test. </summary>
 Public Sub RunTest(ByVal a_testNumber As Integer)
     BeforeEach
     Select Case a_testNumber
@@ -26,12 +29,14 @@ Public Sub RunTest(ByVal a_testNumber As Integer)
     AfterEach
 End Sub
 
+''' <summary>   Runs a single test. </summary>
 Public Sub RunOneTest()
     BeforeAll
     RunTest 1
     AfterAll
 End Sub
 
+''' <summary>   Runs all tests. </summary>
 Public Sub RunAllTests()
     BeforeAll
     Dim p_testNumber As Integer
@@ -42,19 +47,65 @@ Public Sub RunAllTests()
     AfterAll
 End Sub
 
+''' <summary>   Prepares all tests. </summary>
 Public Sub BeforeAll()
 
+    Const p_procedureName As String = "BeforeAll"
+    
+    ' Trap errors to the error handler
+    On Error GoTo err_Handler
+
+    This.Name = "WinsockTests"
+    
     This.TestNumber = 0
+    
+    Set This.ErrTracer = New ErrTracer
+    
     Set This.BeforeAllAssert = Assert.Pass("initialize the overall assert.")
     
     ' clear the error state.
     cc_isr_Core_IO.UserDefinedErrors.ClearErrorState
     
-    Set This.ErrTracer = New ErrTracer
+' . . . . . . . . . . . . . . . . . . . . . . . . . . .
+exit_Handler:
+
+    If cc_isr_Core_IO.UserDefinedErrors.ErrorsArchiveStack.Count > 0 Then
+        
+        Dim p_leftoverErrorMessage As String
+        p_leftoverErrorMessage = cc_isr_Core_IO.UserDefinedErrors.ErrorsArchiveStack.Pop().ToString()
+        Set This.BeforeAllAssert = Assert.Inconclusive("Failed preparing all tests: " & _
+            p_leftoverErrorMessage)
+        This.ErrTracer.TraceError p_leftoverErrorMessage
+    
+    End If
+
+    On Error GoTo 0
+    Exit Sub
+
+' . . . . . . . . . . . . . . . . . . . . . . . . . . .
+err_Handler:
+  
+    ' append the error source
+    cc_isr_Core_IO.ErrorMessageBuilder.AppendErrSource p_procedureName, This.Name, ThisWorkbook
+    
+    ' enqueue the error if not user defined error
+    If Not cc_isr_Core_IO.UserDefinedErrors.IsUserDefinedError(VBA.Err.Number) Then _
+        cc_isr_Core_IO.UserDefinedErrors.EnqueueErrorObject
+    
+    ' exit this procedure (not an active handler)
+    On Error Resume Next
+    GoTo exit_Handler
     
 End Sub
 
+''' <summary>   Prepares each test before it is run. </summary>
 Public Sub BeforeEach()
+
+    Const p_procedureName As String = "BeforeEach"
+    
+    ' Trap errors to the error handler
+    On Error GoTo err_Handler
+
 
     If This.BeforeAllAssert.AssertSuccessful Or This.TestNumber > 0 Then
         
@@ -66,6 +117,8 @@ Public Sub BeforeEach()
     
     End If
     
+    This.TestNumber = This.TestNumber + 1
+                        
     ' clear the error state.
     cc_isr_Core_IO.UserDefinedErrors.ClearErrorState
     
@@ -76,19 +129,116 @@ Public Sub BeforeEach()
             
     End If
     
-    This.TestNumber = This.TestNumber + 1
-                        
+' . . . . . . . . . . . . . . . . . . . . . . . . . . .
+exit_Handler:
+
+    If cc_isr_Core_IO.UserDefinedErrors.ErrorsArchiveStack.Count > 0 Then
+        
+        Dim p_leftoverErrorMessage As String
+        p_leftoverErrorMessage = cc_isr_Core_IO.UserDefinedErrors.ErrorsArchiveStack.Pop().ToString()
+        Set This.BeforeAllAssert = Assert.Inconclusive("Failed preparing test #" & VBA.CStr(This.TestNumber) & ": " & _
+            p_leftoverErrorMessage)
+        This.ErrTracer.TraceError p_leftoverErrorMessage
+    
+    End If
+
+    On Error GoTo 0
+    Exit Sub
+
+' . . . . . . . . . . . . . . . . . . . . . . . . . . .
+err_Handler:
+  
+    ' append the error source
+    cc_isr_Core_IO.ErrorMessageBuilder.AppendErrSource p_procedureName, This.Name, ThisWorkbook
+    
+    ' enqueue the error if not user defined error
+    If Not cc_isr_Core_IO.UserDefinedErrors.IsUserDefinedError(VBA.Err.Number) Then _
+        cc_isr_Core_IO.UserDefinedErrors.EnqueueErrorObject
+    
+    ' exit this procedure (not an active handler)
+    On Error Resume Next
+    GoTo exit_Handler
+
 End Sub
 
+''' <summary>   Releases test elements after each tests is run. </summary>
 Public Sub AfterEach()
     
+    Const p_procedureName As String = "AfterEach"
+    
+    ' Trap errors to the error handler
+    On Error GoTo err_Handler
+
     Set This.BeforeEachAssert = Nothing
+
+' . . . . . . . . . . . . . . . . . . . . . . . . . . .
+exit_Handler:
+
+    If cc_isr_Core_IO.UserDefinedErrors.ErrorsArchiveStack.Count > 0 Then
+        
+        Dim p_leftoverErrorMessage As String
+        p_leftoverErrorMessage = cc_isr_Core_IO.UserDefinedErrors.ErrorsArchiveStack.Pop().ToString()
+        This.ErrTracer.TraceError "Error(s) were stacked unwinding test #" & _
+            VBA.CStr(This.TestNumber) & ": " & p_leftoverErrorMessage
+    
+    End If
+
+    On Error GoTo 0
+    Exit Sub
+
+' . . . . . . . . . . . . . . . . . . . . . . . . . . .
+err_Handler:
+  
+    ' append the error source
+    cc_isr_Core_IO.ErrorMessageBuilder.AppendErrSource p_procedureName, This.Name, ThisWorkbook
+    
+    ' enqueue the error if not user defined error
+    If Not cc_isr_Core_IO.UserDefinedErrors.IsUserDefinedError(VBA.Err.Number) Then _
+        cc_isr_Core_IO.UserDefinedErrors.EnqueueErrorObject
+    
+    ' exit this procedure (not an active handler)
+    On Error Resume Next
+    GoTo exit_Handler
 
 End Sub
 
+''' <summary>   Releases the test class after all tests run. </summary>
 Public Sub AfterAll()
     
+    Const p_procedureName As String = "AfterAll"
+    
+    ' Trap errors to the error handler
+    On Error GoTo err_Handler
+    
     Set This.BeforeAllAssert = Nothing
+
+' . . . . . . . . . . . . . . . . . . . . . . . . . . .
+exit_Handler:
+
+    If cc_isr_Core_IO.UserDefinedErrors.ErrorsArchiveStack.Count > 0 Then
+        
+        Dim p_leftoverErrorMessage As String
+        p_leftoverErrorMessage = cc_isr_Core_IO.UserDefinedErrors.ErrorsArchiveStack.Pop().ToString()
+        This.ErrTracer.TraceError "Errors were stacked unwinding all tests: " & p_leftoverErrorMessage
+    
+    End If
+
+    On Error GoTo 0
+    Exit Sub
+
+' . . . . . . . . . . . . . . . . . . . . . . . . . . .
+err_Handler:
+  
+    ' append the error source
+    cc_isr_Core_IO.ErrorMessageBuilder.AppendErrSource p_procedureName, This.Name, ThisWorkbook
+    
+    ' enqueue the error if not user defined error
+    If Not cc_isr_Core_IO.UserDefinedErrors.IsUserDefinedError(VBA.Err.Number) Then _
+        cc_isr_Core_IO.UserDefinedErrors.EnqueueErrorObject
+    
+    ' exit this procedure (not an active handler)
+    On Error Resume Next
+    GoTo exit_Handler
 
 End Sub
 
@@ -96,8 +246,13 @@ End Sub
 ''' <returns>   An <see cref="Assert"/>   instance of <see cref="Assert.AssertSuccessful"/>   True if the test passed. </returns>
 Public Function TestInitializeAndDispose() As Assert
 
-    Dim p_outcome As Assert
+    Const p_procedureName As String = "TestInitializeAndDispose"
+    
+    ' Trap errors to the error handler
+    On Error GoTo err_Handler
 
+    Dim p_outcome As Assert: Set p_outcome = This.BeforeEachAssert
+    
     ' this is required to initialize Winsock.  It will only ran once.
     Winsock.Initialize
     
@@ -127,6 +282,9 @@ Public Function TestInitializeAndDispose() As Assert
     
     Winsock.Dispose
     
+' . . . . . . . . . . . . . . . . . . . . . . . . . . .
+exit_Handler:
+
     If p_outcome.AssertSuccessful Then _
         Set p_outcome = This.ErrTracer.AssertLeftoverErrors
     
@@ -134,13 +292,36 @@ Public Function TestInitializeAndDispose() As Assert
     
     Set TestInitializeAndDispose = p_outcome
     
+    On Error GoTo 0
+    Exit Function
+
+' . . . . . . . . . . . . . . . . . . . . . . . . . . .
+err_Handler:
+  
+    ' append the error source
+    cc_isr_Core_IO.ErrorMessageBuilder.AppendErrSource p_procedureName, This.Name, ThisWorkbook
+    
+    ' enqueue the error if not user defined error
+    If Not cc_isr_Core_IO.UserDefinedErrors.IsUserDefinedError(VBA.Err.Number) Then _
+        cc_isr_Core_IO.UserDefinedErrors.EnqueueErrorObject
+    
+    ' exit this procedure (not an active handler)
+    On Error Resume Next
+    GoTo exit_Handler
+    
 End Function
 
 ''' <summary>   Unit test. Asserts getting the error description from the Windows API. </summary>
 ''' <returns>   An <see cref="Assert"/> instance of <see cref="Assert.AssertSuccessful"/> True if the test passed. </returns>
 Public Function TestGettingLastErrorDescription() As Assert
 
-    Dim p_outcome As Assert
+    Const p_procedureName As String = "TestGettingLastErrorDescription"
+    
+    ' Trap errors to the error handler
+    On Error GoTo err_Handler
+    
+    Dim p_outcome As Assert: Set p_outcome = This.BeforeEachAssert
+    
     Dim p_errorNumber As Long: p_errorNumber = 5
     Dim p_expected As String: p_expected = "Access is denied."
     Dim p_actual As String: p_actual = Winsock.LastErrorDescription(p_errorNumber)
@@ -148,12 +329,32 @@ Public Function TestGettingLastErrorDescription() As Assert
     Set p_outcome = Assert.AreEqual(p_expected, p_actual, _
             "Winsock should get the correct error description for error number " & CStr(p_errorNumber))
     
+' . . . . . . . . . . . . . . . . . . . . . . . . . . .
+exit_Handler:
+
     If p_outcome.AssertSuccessful Then _
         Set p_outcome = This.ErrTracer.AssertLeftoverErrors
     
     Debug.Print p_outcome.BuildReport("TestGettingLastErrorDescription")
     
     Set TestGettingLastErrorDescription = p_outcome
+    
+    On Error GoTo 0
+    Exit Function
+
+' . . . . . . . . . . . . . . . . . . . . . . . . . . .
+err_Handler:
+  
+    ' append the error source
+    cc_isr_Core_IO.ErrorMessageBuilder.AppendErrSource p_procedureName, This.Name, ThisWorkbook
+    
+    ' enqueue the error if not user defined error
+    If Not cc_isr_Core_IO.UserDefinedErrors.IsUserDefinedError(VBA.Err.Number) Then _
+        cc_isr_Core_IO.UserDefinedErrors.EnqueueErrorObject
+    
+    ' exit this procedure (not an active handler)
+    On Error Resume Next
+    GoTo exit_Handler
     
 End Function
 

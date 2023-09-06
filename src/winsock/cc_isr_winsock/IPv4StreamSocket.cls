@@ -169,6 +169,10 @@ Private This As this_
 ''' <summary>   Initializes an internet protocol Stream Socket with a socket id. </summary>
 Private Sub Class_Initialize()
 
+    ' create an exception to test if this causes an unhandled exception.
+    Dim x As Double
+    x = 1 / 0#
+    
     ' see that the singleton Winsock class is instantiated
     On Error Resume Next
     
