@@ -75,7 +75,7 @@ LogInfo( "opening " + $src)
 $book = $excel.Workbooks.Open($src, $missing, $ReadOnly, $missing, $missing, $missing, $true)
 LogInfo ( "Opened " + $book.Name + " read " + (&{If($ReadOnly) {"only"} Else {"write"}}) + "." )
 
-$ReadOnly = $true
+$ReadOnly = $false
 
 $src = "C:\my\lib\vba\core\core\src\core\cc.isr.core.xlsm"
 LogInfo( "opening " + $src)

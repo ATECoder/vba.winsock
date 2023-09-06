@@ -69,10 +69,11 @@ Public Sub BeforeAll()
 ' . . . . . . . . . . . . . . . . . . . . . . . . . . .
 exit_Handler:
 
-    If cc_isr_Core_IO.UserDefinedErrors.ErrorsArchiveStack.Count > 0 Then
+    ' report any leftover archived errors.
+    If cc_isr_Core_IO.UserDefinedErrors.ArchivedErrorCount > 0 Then
         
         Dim p_leftoverErrorMessage As String
-        p_leftoverErrorMessage = cc_isr_Core_IO.UserDefinedErrors.ErrorsArchiveStack.Pop().ToString()
+        p_leftoverErrorMessage = cc_isr_Core_IO.ErrorMessageBuilder.BuildArchivedErrorsMessage()
         Set This.BeforeAllAssert = Assert.Inconclusive("Failed preparing all tests: " & _
             p_leftoverErrorMessage)
         This.ErrTracer.TraceError p_leftoverErrorMessage
@@ -88,9 +89,8 @@ err_Handler:
     ' append the error source
     cc_isr_Core_IO.ErrorMessageBuilder.AppendErrSource p_procedureName, This.Name, ThisWorkbook
     
-    ' enqueue the error if not user defined error
-    If Not cc_isr_Core_IO.UserDefinedErrors.IsUserDefinedError(VBA.Err.Number) Then _
-        cc_isr_Core_IO.UserDefinedErrors.EnqueueErrorObject
+    ' enqueue the error or append its source to the last error.
+    cc_isr_Core_IO.UserDefinedErrors.EnqueueErrorObject
     
     ' exit this procedure (not an active handler)
     On Error Resume Next
@@ -132,10 +132,11 @@ Public Sub BeforeEach()
 ' . . . . . . . . . . . . . . . . . . . . . . . . . . .
 exit_Handler:
 
-    If cc_isr_Core_IO.UserDefinedErrors.ErrorsArchiveStack.Count > 0 Then
+    ' report any leftover archived errors.
+    If cc_isr_Core_IO.UserDefinedErrors.ArchivedErrorCount > 0 Then
         
         Dim p_leftoverErrorMessage As String
-        p_leftoverErrorMessage = cc_isr_Core_IO.UserDefinedErrors.ErrorsArchiveStack.Pop().ToString()
+        p_leftoverErrorMessage = cc_isr_Core_IO.ErrorMessageBuilder.BuildArchivedErrorsMessage()
         Set This.BeforeAllAssert = Assert.Inconclusive("Failed preparing test #" & VBA.CStr(This.TestNumber) & ": " & _
             p_leftoverErrorMessage)
         This.ErrTracer.TraceError p_leftoverErrorMessage
@@ -151,9 +152,8 @@ err_Handler:
     ' append the error source
     cc_isr_Core_IO.ErrorMessageBuilder.AppendErrSource p_procedureName, This.Name, ThisWorkbook
     
-    ' enqueue the error if not user defined error
-    If Not cc_isr_Core_IO.UserDefinedErrors.IsUserDefinedError(VBA.Err.Number) Then _
-        cc_isr_Core_IO.UserDefinedErrors.EnqueueErrorObject
+    ' enqueue the error or append its source to the last error.
+    cc_isr_Core_IO.UserDefinedErrors.EnqueueErrorObject
     
     ' exit this procedure (not an active handler)
     On Error Resume Next
@@ -174,10 +174,11 @@ Public Sub AfterEach()
 ' . . . . . . . . . . . . . . . . . . . . . . . . . . .
 exit_Handler:
 
-    If cc_isr_Core_IO.UserDefinedErrors.ErrorsArchiveStack.Count > 0 Then
+    ' report any leftover archived errors.
+    If cc_isr_Core_IO.UserDefinedErrors.ArchivedErrorCount > 0 Then
         
         Dim p_leftoverErrorMessage As String
-        p_leftoverErrorMessage = cc_isr_Core_IO.UserDefinedErrors.ErrorsArchiveStack.Pop().ToString()
+        p_leftoverErrorMessage = cc_isr_Core_IO.ErrorMessageBuilder.BuildArchivedErrorsMessage()
         This.ErrTracer.TraceError "Error(s) were stacked unwinding test #" & _
             VBA.CStr(This.TestNumber) & ": " & p_leftoverErrorMessage
     
@@ -192,9 +193,8 @@ err_Handler:
     ' append the error source
     cc_isr_Core_IO.ErrorMessageBuilder.AppendErrSource p_procedureName, This.Name, ThisWorkbook
     
-    ' enqueue the error if not user defined error
-    If Not cc_isr_Core_IO.UserDefinedErrors.IsUserDefinedError(VBA.Err.Number) Then _
-        cc_isr_Core_IO.UserDefinedErrors.EnqueueErrorObject
+    ' enqueue the error or append its source to the last error.
+    cc_isr_Core_IO.UserDefinedErrors.EnqueueErrorObject
     
     ' exit this procedure (not an active handler)
     On Error Resume Next
@@ -215,10 +215,11 @@ Public Sub AfterAll()
 ' . . . . . . . . . . . . . . . . . . . . . . . . . . .
 exit_Handler:
 
-    If cc_isr_Core_IO.UserDefinedErrors.ErrorsArchiveStack.Count > 0 Then
+    ' report any leftover archived errors.
+    If cc_isr_Core_IO.UserDefinedErrors.ArchivedErrorCount > 0 Then
         
         Dim p_leftoverErrorMessage As String
-        p_leftoverErrorMessage = cc_isr_Core_IO.UserDefinedErrors.ErrorsArchiveStack.Pop().ToString()
+        p_leftoverErrorMessage = cc_isr_Core_IO.ErrorMessageBuilder.BuildArchivedErrorsMessage()
         This.ErrTracer.TraceError "Errors were stacked unwinding all tests: " & p_leftoverErrorMessage
     
     End If
@@ -232,9 +233,8 @@ err_Handler:
     ' append the error source
     cc_isr_Core_IO.ErrorMessageBuilder.AppendErrSource p_procedureName, This.Name, ThisWorkbook
     
-    ' enqueue the error if not user defined error
-    If Not cc_isr_Core_IO.UserDefinedErrors.IsUserDefinedError(VBA.Err.Number) Then _
-        cc_isr_Core_IO.UserDefinedErrors.EnqueueErrorObject
+    ' enqueue the error or append its source to the last error.
+    cc_isr_Core_IO.UserDefinedErrors.EnqueueErrorObject
     
     ' exit this procedure (not an active handler)
     On Error Resume Next
@@ -301,9 +301,8 @@ err_Handler:
     ' append the error source
     cc_isr_Core_IO.ErrorMessageBuilder.AppendErrSource p_procedureName, This.Name, ThisWorkbook
     
-    ' enqueue the error if not user defined error
-    If Not cc_isr_Core_IO.UserDefinedErrors.IsUserDefinedError(VBA.Err.Number) Then _
-        cc_isr_Core_IO.UserDefinedErrors.EnqueueErrorObject
+    ' enqueue the error or append its source to the last error.
+    cc_isr_Core_IO.UserDefinedErrors.EnqueueErrorObject
     
     ' exit this procedure (not an active handler)
     On Error Resume Next
@@ -348,9 +347,8 @@ err_Handler:
     ' append the error source
     cc_isr_Core_IO.ErrorMessageBuilder.AppendErrSource p_procedureName, This.Name, ThisWorkbook
     
-    ' enqueue the error if not user defined error
-    If Not cc_isr_Core_IO.UserDefinedErrors.IsUserDefinedError(VBA.Err.Number) Then _
-        cc_isr_Core_IO.UserDefinedErrors.EnqueueErrorObject
+    ' enqueue the error or append its source to the last error.
+    cc_isr_Core_IO.UserDefinedErrors.EnqueueErrorObject
     
     ' exit this procedure (not an active handler)
     On Error Resume Next
