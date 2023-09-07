@@ -55,31 +55,35 @@ Public Sub BeforeAll()
     ' Trap errors to the error handler
     On Error GoTo err_Handler
 
+    Dim p_outcome As cc_isr_Test_Fx.Assert: Set p_outcome = Assert.Pass("Primed to run all tests.")
+
     This.Name = "WinsockTests"
     
     This.TestNumber = 0
     
     Set This.ErrTracer = New ErrTracer
     
-    Set This.BeforeAllAssert = Assert.Pass("initialize the overall assert.")
-    
     ' clear the error state.
     cc_isr_Core_IO.UserDefinedErrors.ClearErrorState
+    
+    ' Prime all tests
     
 ' . . . . . . . . . . . . . . . . . . . . . . . . . . .
 exit_Handler:
 
-    ' report any leftover archived errors.
-    If cc_isr_Core_IO.UserDefinedErrors.ArchivedErrorCount > 0 Then
-        
-        Dim p_leftoverErrorMessage As String
-        p_leftoverErrorMessage = cc_isr_Core_IO.ErrorMessageBuilder.BuildArchivedErrorsMessage()
-        Set This.BeforeAllAssert = Assert.Inconclusive("Failed preparing all tests: " & _
-            p_leftoverErrorMessage)
-        This.ErrTracer.TraceError p_leftoverErrorMessage
-    
+    If p_outcome.AssertSuccessful Then
+        ' report any leftover errors.
+        Set p_outcome = This.ErrTracer.AssertLeftoverErrors()
+        If p_outcome.AssertSuccessful Then
+            Set p_outcome = Assert.Pass("Primed to run all tests.")
+        Else
+            Set p_outcome = Assert.Inconclusive("Failed priming all tests;" & _
+                VBA.vbCrLf & p_outcome.AssertMessage)
+        End If
     End If
-
+    
+    Set This.BeforeAllAssert = p_outcome
+    
     On Error GoTo 0
     Exit Sub
 
@@ -98,6 +102,7 @@ err_Handler:
     
 End Sub
 
+
 ''' <summary>   Prepares each test before it is run. </summary>
 Public Sub BeforeEach()
 
@@ -106,42 +111,37 @@ Public Sub BeforeEach()
     ' Trap errors to the error handler
     On Error GoTo err_Handler
 
+    This.TestNumber = This.TestNumber + 1
 
-    If This.BeforeAllAssert.AssertSuccessful Or This.TestNumber > 0 Then
-        
-        Set This.BeforeEachAssert = Assert.Pass("initialize the pre-test assert.")
-    
+    Dim p_outcome As cc_isr_Test_Fx.Assert
+
+    If This.BeforeAllAssert.AssertSuccessful Then
+         Set p_outcome = Assert.Pass("Primed pre-test #" & VBA.CStr(This.TestNumber))
     Else
-    
-        Set This.BeforeEachAssert = Assert.Inconclusive(This.BeforeAllAssert.AssertMessage)
-    
+        Set p_outcome = Assert.Inconclusive("Unable to prime pre-test #" & VBA.CStr(This.TestNumber) & _
+            ";" & VBA.vbCrLf & This.BeforeAllAssert.AssertMessage)
     End If
     
-    This.TestNumber = This.TestNumber + 1
-                        
     ' clear the error state.
     cc_isr_Core_IO.UserDefinedErrors.ClearErrorState
-    
-    If This.BeforeEachAssert.AssertSuccessful Then
-    
-        Set This.BeforeEachAssert = Assert.AreEqual(0, Err.Number, _
-            "Error Number should be 0.")
-            
-    End If
+   
+    ' Prepare the next test
     
 ' . . . . . . . . . . . . . . . . . . . . . . . . . . .
 exit_Handler:
 
-    ' report any leftover archived errors.
-    If cc_isr_Core_IO.UserDefinedErrors.ArchivedErrorCount > 0 Then
-        
-        Dim p_leftoverErrorMessage As String
-        p_leftoverErrorMessage = cc_isr_Core_IO.ErrorMessageBuilder.BuildArchivedErrorsMessage()
-        Set This.BeforeAllAssert = Assert.Inconclusive("Failed preparing test #" & VBA.CStr(This.TestNumber) & ": " & _
-            p_leftoverErrorMessage)
-        This.ErrTracer.TraceError p_leftoverErrorMessage
-    
+    If p_outcome.AssertSuccessful Then
+        ' report any leftover errors.
+        Set p_outcome = This.ErrTracer.AssertLeftoverErrors()
+        If p_outcome.AssertSuccessful Then
+             Set p_outcome = Assert.Pass("Primed pre-test #" & VBA.CStr(This.TestNumber))
+        Else
+            Set p_outcome = Assert.Inconclusive("Failed priming pre-test #" & VBA.CStr(This.TestNumber) & _
+                ";" & VBA.vbCrLf & p_outcome.AssertMessage)
+        End If
     End If
+    
+    Set This.BeforeEachAssert = p_outcome
 
     On Error GoTo 0
     Exit Sub
@@ -166,24 +166,32 @@ Public Sub AfterEach()
     
     Const p_procedureName As String = "AfterEach"
     
-    ' Trap errors to the error handler
+    ' Trap errors to the error handler.
     On Error GoTo err_Handler
 
-    Set This.BeforeEachAssert = Nothing
+    Dim p_outcome As cc_isr_Test_Fx.Assert
+    Set p_outcome = Assert.Pass("Test #" & VBA.CStr(This.TestNumber) & " cleaned up.")
+
+    ' cleanup after each test.
 
 ' . . . . . . . . . . . . . . . . . . . . . . . . . . .
 exit_Handler:
 
-    ' report any leftover archived errors.
-    If cc_isr_Core_IO.UserDefinedErrors.ArchivedErrorCount > 0 Then
-        
-        Dim p_leftoverErrorMessage As String
-        p_leftoverErrorMessage = cc_isr_Core_IO.ErrorMessageBuilder.BuildArchivedErrorsMessage()
-        This.ErrTracer.TraceError "Error(s) were stacked unwinding test #" & _
-            VBA.CStr(This.TestNumber) & ": " & p_leftoverErrorMessage
-    
-    End If
+    ' release the 'Before Each' assert.
+    Set This.BeforeEachAssert = Nothing
 
+    ' report any leftover errors.
+    Set p_outcome = This.ErrTracer.AssertLeftoverErrors()
+    If p_outcome.AssertSuccessful Then
+        Set p_outcome = Assert.Pass("Test #" & VBA.CStr(This.TestNumber) & " cleaned up.")
+    Else
+        Set p_outcome = Assert.Inconclusive("Errors reported cleaning up test #" & VBA.CStr(This.TestNumber) & _
+            ";" & VBA.vbCrLf & p_outcome.AssertMessage)
+    End If
+    
+    If Not p_outcome.AssertSuccessful Then _
+        This.ErrTracer.TraceError p_outcome.AssertMessage
+    
     On Error GoTo 0
     Exit Sub
 
@@ -210,20 +218,28 @@ Public Sub AfterAll()
     ' Trap errors to the error handler
     On Error GoTo err_Handler
     
-    Set This.BeforeAllAssert = Nothing
+    Dim p_outcome As cc_isr_Test_Fx.Assert: Set p_outcome = Assert.Pass("All tests cleaned up.")
+
+    ' cleanup after all tests.
 
 ' . . . . . . . . . . . . . . . . . . . . . . . . . . .
 exit_Handler:
 
-    ' report any leftover archived errors.
-    If cc_isr_Core_IO.UserDefinedErrors.ArchivedErrorCount > 0 Then
-        
-        Dim p_leftoverErrorMessage As String
-        p_leftoverErrorMessage = cc_isr_Core_IO.ErrorMessageBuilder.BuildArchivedErrorsMessage()
-        This.ErrTracer.TraceError "Errors were stacked unwinding all tests: " & p_leftoverErrorMessage
-    
-    End If
+    ' release the 'Before All' assert.
+    Set This.BeforeAllAssert = Nothing
 
+    ' report any leftover errors.
+    Set p_outcome = This.ErrTracer.AssertLeftoverErrors()
+    If p_outcome.AssertSuccessful Then
+        Set p_outcome = Assert.Pass("Test #" & VBA.CStr(This.TestNumber) & " cleaned up.")
+    Else
+        Set p_outcome = Assert.Inconclusive("Errors reported cleaning up all tests;" & _
+            VBA.vbCrLf & p_outcome.AssertMessage)
+    End If
+    
+    If Not p_outcome.AssertSuccessful Then _
+        This.ErrTracer.TraceError p_outcome.AssertMessage
+    
     On Error GoTo 0
     Exit Sub
 

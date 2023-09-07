@@ -59,8 +59,9 @@ Public Sub BeforeAll()
     ' Trap errors to the error handler
     On Error GoTo err_Handler
 
+    Dim p_outcome As cc_isr_Test_Fx.Assert: Set p_outcome = Assert.Pass("Primed to run all tests.")
+
     This.Name = "TcpClientQueryIdentityTests"
-    
 
     This.TestNumber = 0
     This.Host = "192.168.0.252"
@@ -68,16 +69,14 @@ Public Sub BeforeAll()
     This.PrologixPort = 1234
     This.SocketReceiveTimeout = 100
     
-    This.TestNumber = 0
-    
     Set This.DelayStopper = cc_isr_Core_IO.Factory.NewStopwatch
         
     Set This.ErrTracer = New ErrTracer
     
-    Set This.BeforeAllAssert = Assert.Pass("initialize the overall assert.")
-    
     ' clear the error state.
     cc_isr_Core_IO.UserDefinedErrors.ClearErrorState
+    
+    ' prime all tests
     
     Set This.Client = cc_isr_Winsock.Factory.NewTcpClient()
     
@@ -86,25 +85,19 @@ Public Sub BeforeAll()
 ' . . . . . . . . . . . . . . . . . . . . . . . . . . .
 exit_Handler:
 
-    ' report any leftover archived errors.
-    If cc_isr_Core_IO.UserDefinedErrors.ArchivedErrorCount > 0 Then
-        
-        Dim p_leftoverErrorMessage As String
-        p_leftoverErrorMessage = cc_isr_Core_IO.ErrorMessageBuilder.BuildArchivedErrorsMessage()
-        Set This.BeforeAllAssert = Assert.Inconclusive("Failed preparing all tests: " & _
-            p_leftoverErrorMessage)
-        This.ErrTracer.TraceError p_leftoverErrorMessage
-    
-    ElseIf This.Client.Connected Then
-        
-        Set This.BeforeAllAssert = Assert.Pass("Connected")
-    
-    Else
-        
-        Set This.BeforeAllAssert = Assert.Inconclusive("Tcp Client should be connected")
-    
+    If p_outcome.AssertSuccessful Then
+        ' report any leftover errors.
+        Set p_outcome = This.ErrTracer.AssertLeftoverErrors()
+        If p_outcome.AssertSuccessful Then
+            Set p_outcome = Assert.Pass("Primed to run all tests.")
+        Else
+            Set p_outcome = Assert.Inconclusive("Failed priming all tests;" & _
+                VBA.vbCrLf & p_outcome.AssertMessage)
+        End If
     End If
-
+    
+    Set This.BeforeAllAssert = p_outcome
+    
     On Error GoTo 0
     Exit Sub
 
@@ -131,93 +124,87 @@ Public Sub BeforeEach()
     ' Trap errors to the error handler
     On Error GoTo err_Handler
 
-
-
-    If This.BeforeAllAssert.AssertSuccessful Or This.TestNumber > 0 Then
-        
-        Set This.BeforeEachAssert = IIf(This.Client.Connected, _
-            Assert.IsTrue(True, "Connected"), _
-            Assert.Inconclusive("IPV4 Stream Client should be connected"))
-    
-    Else
-    
-        Set This.BeforeEachAssert = Assert.Inconclusive(This.BeforeAllAssert.AssertMessage)
-    
-    End If
-    
     This.TestNumber = This.TestNumber + 1
+
+    Dim p_outcome As cc_isr_Test_Fx.Assert
+
+    If This.BeforeAllAssert.AssertSuccessful Then
+        Set p_outcome = IIf(This.Client.Connected, _
+            Assert.Pass("Ready to prime pre-test #" & VBA.CStr(This.TestNumber) & _
+                "; TCP Client is connected."), _
+            Assert.Inconclusive("Unable to prime pre-test #" & VBA.CStr(This.TestNumber) & _
+                ";" & " TCP Client should be connected"))
+    Else
+        Set p_outcome = Assert.Inconclusive("Unable to prime pre-test #" & VBA.CStr(This.TestNumber) & _
+            ";" & VBA.vbCrLf & This.BeforeAllAssert.AssertMessage)
+    End If
     
     ' clear the error state.
     cc_isr_Core_IO.UserDefinedErrors.ClearErrorState
+   
+    ' Prepare the next test
     
-    If This.BeforeEachAssert.AssertSuccessful Then
-    
-        Set This.BeforeEachAssert = Assert.AreEqual(0, Err.Number, _
-            "Error Number should be 0.")
-            
-    End If
-
     Dim p_command As String
     Dim p_sentCount As Integer
     Dim p_reply As String
 
-    ' prime the Prologix device
-    If This.Port = This.PrologixPort Then
+    If p_outcome.AssertSuccessful Then
     
-        ' set auto read after write
-        ' Prologix GPIB-ETHERNET controller can be configured to automatically address
-        ' instruments to talk after sending them a command in order to read their response. The
-        ' feature called, Read-After-Write, saves the user from having to issue read commands
-        ' repeatedly.
-        p_command = "++auto 1"
-
-        ' send the command, which may cause Query Unterminated because we are setting the device to talk
-        ' where there is nothing to talk.
-        p_sentCount = This.Client.SendMessage(p_command & VBA.vbLf)
-        This.DelayStopper.Wait 5
-
-        ' disables front panel operation of the currently addressed instrument.
+        ' prime the Prologix device
+        If This.Port = This.PrologixPort Then
         
-        p_sentCount = This.Client.SendMessage("++llo" & VBA.vbLf)
+            ' set auto read after write
+            ' Prologix GPIB-ETHERNET controller can be configured to automatically address
+            ' instruments to talk after sending them a command in order to read their response. The
+            ' feature called, Read-After-Write, saves the user from having to issue read commands
+            ' repeatedly.
+            p_command = "++auto 1"
+    
+            ' send the command, which may cause Query Unterminated because we are setting the device to talk
+            ' where there is nothing to talk.
+            p_sentCount = This.Client.SendMessage(p_command & VBA.vbLf)
+            This.DelayStopper.Wait 5
+    
+            ' disables front panel operation of the currently addressed instrument.
+            
+            p_sentCount = This.Client.SendMessage("++llo" & VBA.vbLf)
+            This.DelayStopper.Wait 5
+    
+        End If
+    
+        ' clear execution state before each test.
+        ' clear errors if any so as to leave the instrument without errors.
+        ' here we add *OPC? to prevent the query unterminated error.
+    
+        p_sentCount = This.Client.SendMessage("*CLS;*WAI;*OPC?" & VBA.vbLf)
         This.DelayStopper.Wait 5
-
-    End If
-
-    ' clear execution state before each test.
-    ' clear errors if any so as to leave the instrument without errors.
-    ' here we add *OPC? to prevent the query unterminated error.
-
-    p_sentCount = This.Client.SendMessage("*CLS;*WAI;*OPC?" & VBA.vbLf)
-    This.DelayStopper.Wait 5
-    p_reply = This.Client.ReceiveRaw
-    This.DelayStopper.Wait 5
-    
-    Set This.BeforeEachAssert = Assert.AreEqual("1", p_reply, _
-            "Operation completion should send the correct reply.")
-                    
-    ' clear the error state.
-    cc_isr_Core_IO.UserDefinedErrors.ClearErrorState
-    
-    If This.BeforeEachAssert.AssertSuccessful Then
-    
-        Set This.BeforeEachAssert = Assert.AreEqual(0, Err.Number, _
-            "Error Number should be 0.")
+        p_reply = This.Client.ReceiveRaw
+        This.DelayStopper.Wait 5
+        
+        Set p_outcome = Assert.AreEqual("1", p_reply, _
+                "Unable to prime pre-test #" & VBA.CStr(This.TestNumber) & _
+                "; Operation completion query should send the correct reply.")
             
     End If
+
+    ' clear the error state.
+    cc_isr_Core_IO.UserDefinedErrors.ClearErrorState
     
 ' . . . . . . . . . . . . . . . . . . . . . . . . . . .
 exit_Handler:
 
-    ' report any leftover archived errors.
-    If cc_isr_Core_IO.UserDefinedErrors.ArchivedErrorCount > 0 Then
-        
-        Dim p_leftoverErrorMessage As String
-        p_leftoverErrorMessage = cc_isr_Core_IO.ErrorMessageBuilder.BuildArchivedErrorsMessage()
-        Set This.BeforeAllAssert = Assert.Inconclusive("Failed preparing test #" & VBA.CStr(This.TestNumber) & ": " & _
-            p_leftoverErrorMessage)
-        This.ErrTracer.TraceError p_leftoverErrorMessage
-    
+    If p_outcome.AssertSuccessful Then
+        ' report any leftover errors.
+        Set p_outcome = This.ErrTracer.AssertLeftoverErrors()
+        If p_outcome.AssertSuccessful Then
+             Set p_outcome = Assert.Pass("Primed pre-test #" & VBA.CStr(This.TestNumber))
+        Else
+            Set p_outcome = Assert.Inconclusive("Failed priming pre-test #" & VBA.CStr(This.TestNumber) & _
+                ";" & VBA.vbCrLf & p_outcome.AssertMessage)
+        End If
     End If
+    
+    Set This.BeforeEachAssert = p_outcome
 
     On Error GoTo 0
     Exit Sub
@@ -242,15 +229,18 @@ Public Sub AfterEach()
     
     Const p_procedureName As String = "AfterEach"
     
-    ' Trap errors to the error handler
+    ' Trap errors to the error handler.
     On Error GoTo err_Handler
 
+    Dim p_outcome As cc_isr_Test_Fx.Assert
+    Set p_outcome = Assert.Pass("Test #" & VBA.CStr(This.TestNumber) & " cleaned up.")
 
-    Dim p_command As String
-    Dim p_sentCount As Integer
-    Dim p_reply As String
-
+    ' cleanup after each test.
     If This.BeforeEachAssert.AssertSuccessful Then
+    
+        Dim p_command As String
+        Dim p_sentCount As Integer
+        Dim p_reply As String
     
         ' clear errors if any so as to leave the instrument without errors.
         p_sentCount = This.Client.SendMessage("*CLS;*WAI;*OPC?" & VBA.vbLf)
@@ -258,7 +248,7 @@ Public Sub AfterEach()
         p_reply = This.Client.ReceiveRaw
         This.DelayStopper.Wait 5
 
-        ' Restore Prologix device
+        ' Restore Prologix device.
         If This.BeforeEachAssert.AssertSuccessful And This.Port = This.PrologixPort Then
         
             p_command = "++auto 0"
@@ -277,21 +267,24 @@ Public Sub AfterEach()
 
     End If
     
-    Set This.BeforeEachAssert = Nothing
-        
 ' . . . . . . . . . . . . . . . . . . . . . . . . . . .
 exit_Handler:
 
-    ' report any leftover archived errors.
-    If cc_isr_Core_IO.UserDefinedErrors.ArchivedErrorCount > 0 Then
-        
-        Dim p_leftoverErrorMessage As String
-        p_leftoverErrorMessage = cc_isr_Core_IO.ErrorMessageBuilder.BuildArchivedErrorsMessage()
-        This.ErrTracer.TraceError "Error(s) were stacked unwinding test #" & _
-            VBA.CStr(This.TestNumber) & ": " & p_leftoverErrorMessage
-    
-    End If
+    ' release the 'Before Each' assert.
+    Set This.BeforeEachAssert = Nothing
 
+    ' report any leftover errors.
+    Set p_outcome = This.ErrTracer.AssertLeftoverErrors()
+    If p_outcome.AssertSuccessful Then
+        Set p_outcome = Assert.Pass("Test #" & VBA.CStr(This.TestNumber) & " cleaned up.")
+    Else
+        Set p_outcome = Assert.Inconclusive("Errors reported cleaning up test #" & VBA.CStr(This.TestNumber) & _
+            ";" & VBA.vbCrLf & p_outcome.AssertMessage)
+    End If
+    
+    If Not p_outcome.AssertSuccessful Then _
+        This.ErrTracer.TraceError p_outcome.AssertMessage
+    
     On Error GoTo 0
     Exit Sub
 
@@ -318,26 +311,34 @@ Public Sub AfterAll()
     ' Trap errors to the error handler
     On Error GoTo err_Handler
     
+    Dim p_outcome As cc_isr_Test_Fx.Assert: Set p_outcome = Assert.Pass("All tests cleaned up.")
+    
+    ' cleanup after all tests.
+    
     ' disconnect if connected
     If Not This.Client Is Nothing Then _
         This.Client.CloseConnection
 
     Set This.Client = Nothing
 
-    Set This.BeforeAllAssert = Nothing
-
 ' . . . . . . . . . . . . . . . . . . . . . . . . . . .
 exit_Handler:
 
-    ' report any leftover archived errors.
-    If cc_isr_Core_IO.UserDefinedErrors.ArchivedErrorCount > 0 Then
-        
-        Dim p_leftoverErrorMessage As String
-        p_leftoverErrorMessage = cc_isr_Core_IO.ErrorMessageBuilder.BuildArchivedErrorsMessage()
-        This.ErrTracer.TraceError "Errors were stacked unwinding all tests: " & p_leftoverErrorMessage
-    
-    End If
+    ' release the 'Before All' assert.
+    Set This.BeforeAllAssert = Nothing
 
+    ' report any leftover errors.
+    Set p_outcome = This.ErrTracer.AssertLeftoverErrors()
+    If p_outcome.AssertSuccessful Then
+        Set p_outcome = Assert.Pass("Test #" & VBA.CStr(This.TestNumber) & " cleaned up.")
+    Else
+        Set p_outcome = Assert.Inconclusive("Errors reported cleaning up all tests;" & _
+            VBA.vbCrLf & p_outcome.AssertMessage)
+    End If
+    
+    If Not p_outcome.AssertSuccessful Then _
+        This.ErrTracer.TraceError p_outcome.AssertMessage
+    
     On Error GoTo 0
     Exit Sub
 

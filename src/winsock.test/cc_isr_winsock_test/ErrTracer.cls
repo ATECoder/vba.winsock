@@ -36,8 +36,8 @@ Private Function IErrTracer_AssertLeftoverErrors(Optional ByVal a_delimiter As S
         Dim p_archivedErrors As String
         p_archivedErrors = cc_isr_Core_IO.UserDefinedErrors.PopArchivedErrors()
         Set p_outcome = Assert.Fail( _
-            VBA.CStr(p_queuedErrorCount) & " errors were found the error queue and " & _
-            VBA.CStr(p_archivedErrorCount) & " errors were found the error stack:" & _
+            VBA.CStr(p_queuedErrorCount) & " errors were found in the error queue and " & _
+            VBA.CStr(p_archivedErrorCount) & " errors were found in the error stack:" & _
             VBA.vbCrLf & p_archivedErrors)
     Else
         
