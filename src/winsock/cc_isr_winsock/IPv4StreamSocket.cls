@@ -19,7 +19,7 @@ Private Const RECEIVE_ERROR = -1
 Private Const DEFAULT_TIMEOUT_MS = 500
 
 ''' <summary>   The event that is raised upon change of connection. </summary>
-''' <param name="eventArgs">   An <see cref="cc_isr_Winsock.ConnectionChangedEventArgs"/> event args. </param>
+''' <param name="a_eventArgs">   An <see cref="cc_isr_Winsock.ConnectionChangedEventArgs"/> event args. </param>
 Public Event ConnectionChanged(ByVal a_eventArgs As cc_isr_Winsock.ConnectionChangedEventArgs)
 
 ''' <summary>   Permits an incoming connection attempt on a socket. </summary>
@@ -197,7 +197,7 @@ Private Sub Class_Initialize()
     
 End Sub
 
-''' <summary>   terminates the socket and releases its Winsock registration. </summary>
+''' <summary>   Terminates the socket and releases its Winsock registration. </summary>
 Private Sub Class_Terminate()
 
     ' see that the singleton Winsock class is instantiated
@@ -210,17 +210,36 @@ Private Sub Class_Terminate()
 
 End Sub
 
-''' <summary>   Initializes and returns an Inet stream socket using the provided socket id. </summary>
-''' <param name="a_connectedSocketId">   The ID of a connected socket. </param>
-''' <param name="a_timeoutMs">           [Optional, 500] The receive timeout interval in milliseconds. </param>
+''' <summary>   Returns this unconnected Inet stream socket instance. No actual initialization is done
+''' at this time. </summary>
 ''' <returns>   [<see cref="IPv4StreamSocket"/>]. </returns>
-Public Function Initialize(ByVal a_connectedSocketId As Long, _
+Public Function Initialize() As IPv4StreamSocket
+    
+    Set Initialize = Me
+
+End Function
+
+''' <summary>   Accepts an active connection, sets the provided socket read timeout, and
+''' returns this object as an active Inet stream socket using the provided socket id. </summary>
+''' <param name="a_connectedSocketId">   [Long] The ID of a connected socket. </param>
+''' <param name="a_timeoutMs">           [Optional, Long, 500] The receive timeout interval in milliseconds. </param>
+''' <returns>   [<see cref="IPv4StreamSocket"/>]. </returns>
+Public Function Accept(ByVal a_connectedSocketId As Long, _
         Optional ByVal a_timeoutMs As Long = 500) As IPv4StreamSocket
+    
+    If Me.Connected Then
+        cc_isr_Core_IO.UserDefinedErrors.RaiseError cc_isr_Core_IO.UserDefinedErrors.InvalidOperationError, _
+            ThisWorkbook.VBProject.Name & "." & TypeName(Me) & ".Accept", _
+            " This Inet Stream Socket is already connected to " & This.SocketAddress & _
+            " A new INet Stream Socket must be used to accept this connected socket ID " & _
+            a_connectedSocketId & "."
+    End If
+    
     
     This.SocketId = a_connectedSocketId
     This.Connected = True
     Me.SetReceiveTimeout a_timeoutMs
-    Set Initialize = Me
+    Set Accept = Me
 
 End Function
 
@@ -424,7 +443,7 @@ Public Function AcceptTcpClient(ByVal a_serverSocket As IPv4StreamSocket, _
     
     Dim p_clientSocket As IPv4StreamSocket
     Set p_clientSocket = New IPv4StreamSocket
-    p_clientSocket.Initialize p_socketId, a_timeoutMs
+    p_clientSocket.Accept p_socketId, a_timeoutMs
     
     Set AcceptTcpClient = p_clientSocket
     

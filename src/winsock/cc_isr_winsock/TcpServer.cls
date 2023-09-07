@@ -101,7 +101,7 @@ Public Function AcceptTcpClient(Optional ByVal a_timeoutMs As Long = 500) As Tcp
     
     Dim p_client As TcpClient
     Set p_client = New TcpClient
-    p_client.Initialize p_connectedClientSocket
+    p_client.Accept p_connectedClientSocket
     
     Set AcceptTcpClient = p_client
 
@@ -119,6 +119,7 @@ End Sub
 
 ' + + + + + + + + + + + + + + + + + + + + + + + + + + +
 ' Connection Changed
+' + + + + + + + + + + + + + + + + + + + + + + + + + + +
 
 ''' <summary>   Raises the <see cref="ConnectionChanged"/> event. </summary>
 ''' <para name="a_isConnected">   [Boolean] The connection state. </param>

@@ -41,17 +41,28 @@ Private Sub Class_Terminate()
     IConnectable_Dispose
 End Sub
 
-''' <summary>   Initializes and returns this TCP Client using the provided connected socket. </summary>
+''' <summary>   Returns this unconnected Tcp Client instance. No actual initialization is done
+''' at this time. </summary>
 ''' <remarks>   Raises an invalid operation exception is a socket is already connected. </remarks>
-''' <param name="connectedSocket ">   [IPv4StreamSocket] A connected INET stream socket. </param>
 ''' <returns>   [<see cref="TcpClient"/>]. </returns>
-Public Function Initialize(ByVal a_connectedSocket As IPv4StreamSocket) As TcpClient
+Public Function Initialize() As TcpClient
+    
+    Set Initialize = Me
+    
+End Function
+
+''' <summary>   Accepts and active connection using the provided connected socket and returns
+''' this instance of a TCP Client. </summary>
+''' <remarks>   Raises an invalid operation exception is a socket is already connected. </remarks>
+''' <param name="a_connectedSocket ">   [IPv4StreamSocket] A connected INET stream socket. </param>
+''' <returns>   [<see cref="TcpClient"/>]. </returns>
+Public Function Accept(ByVal a_connectedSocket As IPv4StreamSocket) As TcpClient
     
     If Me.Connected Then
         cc_isr_Core_IO.UserDefinedErrors.RaiseError cc_isr_Core_IO.UserDefinedErrors.InvalidOperationError, _
-            ThisWorkbook.VBProject.Name & "." & TypeName(Me) & ".Initialize", _
-            " This Tc Client is connected to " & This.TcpClientSocket.SocketAddress & _
-            " A new Tcp Client must be used when initialized using a connected socket at " & _
+            ThisWorkbook.VBProject.Name & "." & TypeName(Me) & ".Accept", _
+            " This Tcp Client is already connected to " & This.TcpClientSocket.SocketAddress & _
+            " A new Tcp Client must be used to accept a connected socket at " & _
             a_connectedSocket.SocketAddress & "."
     End If
     
@@ -61,7 +72,7 @@ Public Function Initialize(ByVal a_connectedSocket As IPv4StreamSocket) As TcpCl
     Set This.TcpClientSocket = a_connectedSocket
     Set m_tcpClientSocket = This.TcpClientSocket
     
-    Set Initialize = Me
+    Set Accept = Me
     
 End Function
 
