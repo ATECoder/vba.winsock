@@ -9,8 +9,8 @@ Option Explicit
 Private Type this_
     Name As String
     TestNumber As Integer
-    BeforeAllAssert As Assert
-    BeforeEachAssert As Assert
+    BeforeAllAssert As cc_isr_Test_Fx.Assert
+    BeforeEachAssert As cc_isr_Test_Fx.Assert
     ErrTracer As IErrTracer
 End Type
 
@@ -243,15 +243,16 @@ err_Handler:
 End Sub
 
 ''' <summary>   Unit test. Asserts instantiating and disposing of the Winsock framework. </summary>
-''' <returns>   An <see cref="Assert"/>   instance of <see cref="Assert.AssertSuccessful"/>   True if the test passed. </returns>
-Public Function TestInitializeAndDispose() As Assert
+''' <returns>   [<see cref="cc_isr_Test_Fx.Assert"/>] instance where
+''' <see cref="Assert.AssertSuccessful"/> is <c>True</c> if the test passed. </returns>
+Public Function TestInitializeAndDispose() As cc_isr_Test_Fx.Assert
 
     Const p_procedureName As String = "TestInitializeAndDispose"
     
     ' Trap errors to the error handler
     On Error GoTo err_Handler
 
-    Dim p_outcome As Assert: Set p_outcome = This.BeforeEachAssert
+    Dim p_outcome As cc_isr_Test_Fx.Assert: Set p_outcome = This.BeforeEachAssert
     
     ' this is required to initialize Winsock.  It will only ran once.
     Winsock.Initialize
@@ -312,14 +313,14 @@ End Function
 
 ''' <summary>   Unit test. Asserts getting the error description from the Windows API. </summary>
 ''' <returns>   An <see cref="Assert"/> instance of <see cref="Assert.AssertSuccessful"/> True if the test passed. </returns>
-Public Function TestGettingLastErrorDescription() As Assert
+Public Function TestGettingLastErrorDescription() As cc_isr_Test_Fx.Assert
 
     Const p_procedureName As String = "TestGettingLastErrorDescription"
     
     ' Trap errors to the error handler
     On Error GoTo err_Handler
     
-    Dim p_outcome As Assert: Set p_outcome = This.BeforeEachAssert
+    Dim p_outcome As cc_isr_Test_Fx.Assert: Set p_outcome = This.BeforeEachAssert
     
     Dim p_errorNumber As Long: p_errorNumber = 5
     Dim p_expected As String: p_expected = "Access is denied."

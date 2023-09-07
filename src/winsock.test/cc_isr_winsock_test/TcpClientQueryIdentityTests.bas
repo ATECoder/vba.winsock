@@ -9,8 +9,8 @@ Option Explicit
 Private Type this_
     Name As String
     TestNumber As Integer
-    BeforeAllAssert As Assert
-    BeforeEachAssert As Assert
+    BeforeAllAssert As cc_isr_Test_Fx.Assert
+    BeforeEachAssert As cc_isr_Test_Fx.Assert
     Host As String
     Port As Long
     PrologixPort As Long
@@ -357,15 +357,16 @@ err_Handler:
 End Sub
 
 ''' <summary>   Unit test. Asserts that the TCP Client should query a device identity. </summary>
-''' <returns>   An <see cref="Assert"/>   instance of <see cref="Assert.AssertSuccessful"/>   True if the test passed. </returns>
-Public Function TestTcpClentShouldQueryIdentity() As Assert
+''' <returns>   [<see cref="cc_isr_Test_Fx.Assert"/>] instance where
+''' <see cref="Assert.AssertSuccessful"/> is <c>True</c> if the test passed. </returns>
+Public Function TestTcpClentShouldQueryIdentity() As cc_isr_Test_Fx.Assert
 
     Const p_procedureName As String = "TestTcpClentShouldQueryIdentity"
     
     ' Trap errors to the error handler
     On Error GoTo err_Handler
     
-    Dim p_outcome As Assert: Set p_outcome = This.BeforeEachAssert
+    Dim p_outcome As cc_isr_Test_Fx.Assert: Set p_outcome = This.BeforeEachAssert
     
     Dim p_command As String: p_command = "*IDN?"
     Dim p_sentCount As Integer
