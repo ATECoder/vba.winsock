@@ -94,6 +94,7 @@ $excel.EnableEvents = $true;
 $src = "C:\my\lib\vba\iot\winsock\src\winsock.test\cc.isr.winsock.test.xlsm"
 LogInfo( "opening " + $src)
 $book = $excel.Workbooks.Open($src, $missing, $false, $missing, $missing, $missing, $true)
+$book.Windows(1).Visible = $true
 LogInfo ( "Opened " + $book.Name + " read " + (&{If($ReadOnly) {"only"} Else {"write"}}) + "." )
 
 LogInfo( "project loaded. Script will close in a few seconds" )

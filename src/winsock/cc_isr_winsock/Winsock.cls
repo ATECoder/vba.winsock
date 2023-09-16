@@ -62,7 +62,7 @@ Private Declare PtrSafe Function FormatMessage_ Lib "kernel32" Alias "FormatMess
          ByVal dwLanguageId As Long, _
          ByVal lpBuffer As String, _
          ByVal nSize As Long, _
-               Arguments As LongPtr) As Long
+               a_arguments As LongPtr) As Long
                
 Private Declare PtrSafe Function GetSystemDefaultLangID_ Lib "kernel32" Alias "GetSystemDefaultLangID" () As Integer
                
@@ -103,7 +103,8 @@ Public Function Initialize() As Long
     If p_result <> 0 Then
         cc_isr_Core_IO.UserDefinedErrors.RaiseError cc_isr_Core_IO.UserDefinedErrors.WinsockStartingError, _
             ThisWorkbook.VBProject.Name & "." & TypeName(Me) & ".Initialize", _
-            Winsock.LastErrorMessage(" Last error: ")
+            " Failed initializing WINSOCK. winsock32.WSAStartup(wsock32.ws32_VERSION, p_startUpInfo) returned " & _
+            VBA.CStr(p_result) & Winsock.LastErrorMessage()
     End If
     This.Initiated = (p_result = 0)
     This.Disposed = False
@@ -154,21 +155,24 @@ Public Property Get Disposed() As Boolean
 End Property
 
 ''' <summary>   Builds the last error message including the error number. </summary>
+''' <param name="a_prefix">   [Optional, String, '; Last WINSOCK error: '] the prefix for the message. </param>
+''' <param name="a_suffix">   [Optional, String, '."] the suffix for the message. </param>
 ''' <returns>   [String]. <returns>
-Public Function LastErrorMessage(ByVal prefix As String) As String
+Public Function LastErrorMessage(Optional ByVal a_prefix As String = "; Last WINSOCK error: ", _
+    Optional ByVal a_suffix As String = ".") As String
     
+    Dim p_reply As String: p_reply = VBA.vbNullString
     Dim p_number As Long: p_number = Me.LastError
-    If p_number = 0 Then
-        LastErrorMessage = vbNullString
-    Else
+    If p_number <> 0 Then
+        p_reply = a_prefix
         Dim p_description As String
         p_description = Me.LastErrorDescription(p_number)
-        If StringExtensions.IsNullOrEmpty(p_description) Then
-            LastErrorMessage = prefix & p_description & " #" & VBA.CStr(p_number) & "."
-        Else
-            LastErrorMessage = prefix & "#" & VBA.CStr(p_number) & "."
+        If VBA.vbNullString <> p_description Then
+            p_reply = p_reply & p_description & " "
         End If
+        p_reply = p_reply & "#" & VBA.CStr(p_number)
     End If
+    LastErrorMessage = p_reply & a_suffix
 
 End Function
 
@@ -224,8 +228,9 @@ Public Function Cleanup() As Long
     p_result = WSACleanup()
     If p_result = wsock32.ws32_SOCKET_ERROR Then
         cc_isr_Core_IO.UserDefinedErrors.RaiseError cc_isr_Core_IO.UserDefinedErrors.WinsockCleanupError, _
-                ThisWorkbook.VBProject.Name & "." & TypeName(Me) & ".Cleanup", _
-                Winsock.LastErrorMessage(" Last error: ")
+            ThisWorkbook.VBProject.Name & "." & TypeName(Me) & ".Cleanup", _
+            " Failed cleaning up WINSOCK. winsock32.WSACleanup() returned " & _
+            VBA.CStr(p_result) & Winsock.LastErrorMessage()
     End If
     Cleanup = p_result
 
@@ -250,8 +255,8 @@ Public Sub Dispose()
         If p_result = wsock32.ws32_SOCKET_ERROR Then
             cc_isr_Core_IO.UserDefinedErrors.RaiseError cc_isr_Core_IO.UserDefinedErrors.WinsockCleanupError, _
                 ThisWorkbook.VBProject.Name & "." & TypeName(Me) & ".Dispose", _
-                Winsock.LastErrorMessage(" Last error: ")
-                      
+                " Failed cleaning up WINSOCK. winsock32.WSACleanup() returned " & _
+                VBA.CStr(p_result) & Winsock.LastErrorMessage()
         End If
     End If
     

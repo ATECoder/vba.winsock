@@ -12,22 +12,29 @@ Private Type this_
     BeforeAllAssert As cc_isr_Test_Fx.Assert
     BeforeEachAssert As cc_isr_Test_Fx.Assert
     ErrTracer As IErrTracer
+    TestCount As Integer
+    RunCount As Integer
+    PassedCount As Integer
+    FailedCount As Integer
+    InconclusiveCount As Integer
 End Type
 
 Private This As this_
 
 ''' <summary>   Runs the specified test. </summary>
-Public Sub RunTest(ByVal a_testNumber As Integer)
+Public Function RunTest(ByVal a_testNumber As Integer) As cc_isr_Test_Fx.Assert
+    Dim p_outcome As cc_isr_Test_Fx.Assert
     BeforeEach
     Select Case a_testNumber
         Case 1
-            TestInitializeAndDispose
+            Set p_outcome = TestInitializeAndDispose
         Case 2
-            TestGettingLastErrorDescription
+            Set p_outcome = TestGettingLastErrorDescription
         Case Else
     End Select
+    Set RunTest = p_outcome
     AfterEach
-End Sub
+End Function
 
 ''' <summary>   Runs a single test. </summary>
 Public Sub RunOneTest()
@@ -39,12 +46,31 @@ End Sub
 ''' <summary>   Runs all tests. </summary>
 Public Sub RunAllTests()
     BeforeAll
+    Dim p_outcome As cc_isr_Test_Fx.Assert
+    This.RunCount = 0
+    This.PassedCount = 0
+    This.FailedCount = 0
+    This.InconclusiveCount = 0
+    This.TestCount = 2
     Dim p_testNumber As Integer
-    For p_testNumber = 1 To 2
-        RunTest p_testNumber
+    For p_testNumber = 1 To This.TestCount
+        Set p_outcome = RunTest(p_testNumber)
+        If Not p_outcome Is Nothing Then
+            This.RunCount = This.RunCount + 1
+            If p_outcome.AssertInconclusive Then
+                This.InconclusiveCount = This.InconclusiveCount + 1
+            ElseIf p_outcome.AssertSuccessful Then
+                This.PassedCount = This.PassedCount + 1
+            Else
+                This.FailedCount = This.FailedCount + 1
+            End If
+        End If
         DoEvents
     Next p_testNumber
     AfterAll
+    Debug.Print "Ran " & VBA.CStr(This.RunCount) & " out of " & VBA.CStr(This.TestCount) & " tests."
+    Debug.Print "Passed: " & VBA.CStr(This.PassedCount) & "; Failed: " & VBA.CStr(This.FailedCount) & _
+                "; Inconclusive: " & VBA.CStr(This.InconclusiveCount) & "."
 End Sub
 
 ''' <summary>   Prepares all tests. </summary>
