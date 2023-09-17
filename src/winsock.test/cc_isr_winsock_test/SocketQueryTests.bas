@@ -1,0 +1,835 @@
+Attribute VB_Name = "SocketQueryTests"
+''' - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+''' <summary>   Socket query identity Tests. </summary>
+''' - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+Option Explicit
+
+''' <summary>   This class properties. </summary>
+Private Type this_
+    Name As String
+    TestNumber As Integer
+    BeforeAllAssert As cc_isr_Test_Fx.Assert
+    BeforeEachAssert As cc_isr_Test_Fx.Assert
+    Host As String
+    Port As Long
+    PrologixPort As Long
+    Socket As IPv4StreamSocket
+    ReceiveTimeout As Long
+    ReadAfterWriteDelay As Integer
+    AssertTalkOnWrite As Boolean
+    DelayStopper As cc_isr_Core_IO.Stopwatch
+    ErrTracer As IErrTracer
+    TestCount As Integer
+    RunCount As Integer
+    PassedCount As Integer
+    FailedCount As Integer
+    InconclusiveCount As Integer
+End Type
+
+Private This As this_
+
+''' <summary>   Runs the specified test. </summary>
+Public Function RunTest(ByVal a_testNumber As Integer) As cc_isr_Test_Fx.Assert
+    Dim p_outcome As cc_isr_Test_Fx.Assert
+    BeforeEach
+    Select Case a_testNumber
+        Case 1
+            Set p_outcome = TestSocketShouldConnect
+        Case 2
+            Set p_outcome = TestSocketShouldQueryIdentity
+        Case Else
+    End Select
+    Set RunTest = p_outcome
+    AfterEach
+End Function
+
+''' <summary>   Runs a single test. </summary>
+Public Sub RunOneTest()
+    BeforeAll
+    RunTest 1
+    AfterAll
+End Sub
+
+''' <summary>   Runs all tests. </summary>
+Public Sub RunAllTests()
+    BeforeAll
+    Dim p_outcome As cc_isr_Test_Fx.Assert
+    This.RunCount = 0
+    This.PassedCount = 0
+    This.FailedCount = 0
+    This.InconclusiveCount = 0
+    This.TestCount = 2
+    Dim p_testNumber As Integer
+    For p_testNumber = 1 To This.TestCount
+        Set p_outcome = RunTest(p_testNumber)
+        If Not p_outcome Is Nothing Then
+            This.RunCount = This.RunCount + 1
+            If p_outcome.AssertInconclusive Then
+                This.InconclusiveCount = This.InconclusiveCount + 1
+            ElseIf p_outcome.AssertSuccessful Then
+                This.PassedCount = This.PassedCount + 1
+            Else
+                This.FailedCount = This.FailedCount + 1
+            End If
+        End If
+        DoEvents
+    Next p_testNumber
+    AfterAll
+    Debug.Print "Ran " & VBA.CStr(This.RunCount) & " out of " & VBA.CStr(This.TestCount) & " tests."
+    Debug.Print "Passed: " & VBA.CStr(This.PassedCount) & "; Failed: " & VBA.CStr(This.FailedCount) & _
+                "; Inconclusive: " & VBA.CStr(This.InconclusiveCount) & "."
+End Sub
+
+''' <summary>   Prepares all tests. </summary>
+Public Sub BeforeAll()
+
+    Const p_procedureName As String = "BeforeAll"
+    
+    ' Trap errors to the error handler
+    On Error GoTo err_Handler
+
+    Dim p_outcome As cc_isr_Test_Fx.Assert: Set p_outcome = cc_isr_Test_Fx.Assert.Pass("Primed to run all tests.")
+    
+    This.Name = "SocketQueryTests"
+    
+    This.TestNumber = 0
+    This.Host = "192.168.0.252"
+    This.Port = 1234
+    This.PrologixPort = 1234
+    This.ReceiveTimeout = 3000
+    This.ReadAfterWriteDelay = 5
+    This.AssertTalkOnWrite = False
+    
+    Set This.ErrTracer = New ErrTracer
+    
+    ' clear the error state.
+    cc_isr_Core_IO.UserDefinedErrors.ClearErrorState
+    
+    ' prime all tests
+    
+    Set This.DelayStopper = cc_isr_Core_IO.Factory.NewStopwatch
+        
+    Set This.Socket = cc_isr_Winsock.Factory.NewIPv4StreamSocket()
+   
+    Dim p_details As String
+    If Not This.Socket.TryOpenConnection(This.Host, This.Port, This.ReceiveTimeout, p_details) Then
+        Set p_outcome = cc_isr_Test_Fx.Assert.Fail(p_details)
+    End If
+    
+' . . . . . . . . . . . . . . . . . . . . . . . . . . .
+exit_Handler:
+
+    If p_outcome.AssertSuccessful Then
+        ' report any leftover errors.
+        Set p_outcome = This.ErrTracer.AssertLeftoverErrors()
+        If p_outcome.AssertSuccessful Then
+            Set p_outcome = cc_isr_Test_Fx.Assert.Pass("Primed to run all tests.")
+        Else
+            Set p_outcome = cc_isr_Test_Fx.Assert.Inconclusive("Failed priming all tests;" & _
+                VBA.vbCrLf & p_outcome.AssertMessage)
+        End If
+    End If
+    
+    Set This.BeforeAllAssert = p_outcome
+    
+    On Error GoTo 0
+    Exit Sub
+
+' . . . . . . . . . . . . . . . . . . . . . . . . . . .
+err_Handler:
+  
+    ' append the error source
+    cc_isr_Core_IO.ErrorMessageBuilder.AppendErrSource p_procedureName, This.Name, ThisWorkbook
+    
+    ' enqueue the error or append its source to the last error.
+    cc_isr_Core_IO.UserDefinedErrors.EnqueueErrorObject
+    
+    ' exit this procedure (not an active handler)
+    On Error Resume Next
+    GoTo exit_Handler
+    
+End Sub
+
+''' <summary>   Prepares each test before it is run. </summary>
+Public Sub BeforeEach()
+
+    Const p_procedureName As String = "BeforeEach"
+    
+    ' Trap errors to the error handler
+    On Error GoTo err_Handler
+
+    This.TestNumber = This.TestNumber + 1
+
+    Dim p_outcome As cc_isr_Test_Fx.Assert
+
+    If This.BeforeAllAssert.AssertSuccessful Then
+        Set p_outcome = IIf(This.Socket.Connected, _
+            cc_isr_Test_Fx.Assert.Pass("Ready to prime pre-test #" & VBA.CStr(This.TestNumber) & _
+                "; IPV4 Stream Client is connected."), _
+            cc_isr_Test_Fx.Assert.Inconclusive("Unable to prime pre-test #" & VBA.CStr(This.TestNumber) & _
+                ";" & " IPV4 Stream Client should be connected"))
+    Else
+        Set p_outcome = cc_isr_Test_Fx.Assert.Inconclusive("Unable to prime pre-test #" & VBA.CStr(This.TestNumber) & _
+            ";" & VBA.vbCrLf & This.BeforeAllAssert.AssertMessage)
+    End If
+
+    ' clear the error state.
+    cc_isr_Core_IO.UserDefinedErrors.ClearErrorState
+   
+    ' Prepare the next test
+
+    Dim p_command As String
+    Dim p_sentCount As Integer
+    Dim p_reply As String
+    Dim p_details As String: p_details = VBA.vbNullString
+
+    If p_outcome.AssertSuccessful And This.Port = This.PrologixPort Then
+    
+        ' prime the Prologix device
+        ' Prologix GPIB-ETHERNET controller can be configured to automatically address
+        ' instruments to talk after sending them a command in order to read their response. The
+        ' feature called, Read-After-Write, saves the user from having to issue read commands
+        ' repeatedly.
+        
+        ' set the GPIB termination characters to none - do not append termination characters.
+        Set p_outcome = AssertShouldValidateQuery("++eos", "3")
+        
+        ' Enable EOI assertion with last character
+        Set p_outcome = AssertShouldValidateQuery("++eoi", "1")
+       
+        ' set the read-after-write feature to true.
+        Set p_outcome = AssertShouldValidateQuery("++auto", IIf(This.AssertTalkOnWrite, "1", "0"))
+    
+        If p_outcome.AssertSuccessful Then
+        
+            Dim p_timeout As Long
+            p_timeout = DelimitLong(This.ReceiveTimeout, 1, 3000)
+            Set p_outcome = AssertShouldValidateQuery("++read_tmo_ms", VBA.CStr(p_timeout))
+            
+        End If
+        
+        If p_outcome.AssertSuccessful Then
+            
+            ' disable front panel operation of the currently addressed instrument.
+            p_sentCount = This.Socket.SendMessage("++llo" & VBA.vbLf)
+            This.DelayStopper.Wait This.ReadAfterWriteDelay
+        End If
+    
+    End If
+    
+    If p_outcome.AssertSuccessful Then
+        
+        ' clear execution state before each test.
+        ' clear errors if any so as to leave the instrument without errors.
+        ' here we add *OPC? to prevent the query unterminated error.
+    
+        p_sentCount = This.Socket.SendMessage("*CLS;*WAI;*OPC?" & VBA.vbLf)
+        This.DelayStopper.Wait This.ReadAfterWriteDelay
+        
+        If p_outcome.AssertSuccessful And This.Port = This.PrologixPort Then
+        
+            Dim p_serialPollOutcome As cc_isr_Test_Fx.Assert
+            Set p_serialPollOutcome = AssertSerialPollShouldValidate(16, 16)
+            If Not p_serialPollOutcome.AssertSuccessful Then
+                Debug.Print p_serialPollOutcome.AssertMessage
+            End If
+        
+        End If
+        
+        If 0 > TryReceive(p_reply, p_details) Then
+            Set p_outcome = cc_isr_Test_Fx.Assert.Fail(p_details)
+        End If
+        This.DelayStopper.Wait This.ReadAfterWriteDelay
+        
+        If p_outcome.AssertSuccessful And This.Port = This.PrologixPort Then
+        
+            Set p_serialPollOutcome = AssertSerialPollShouldValidate(0, 16)
+            If Not p_serialPollOutcome.AssertSuccessful Then
+                Debug.Print p_serialPollOutcome.AssertMessage
+            End If
+        
+        End If
+        
+    End If
+    
+    If p_outcome.AssertSuccessful Then _
+        Set p_outcome = cc_isr_Test_Fx.Assert.AreEqual("1", p_reply, _
+            "Unable to prime pre-test #" & VBA.CStr(This.TestNumber) & _
+            "; Operation completion query should return the correct reply.")
+    
+    ' clear the error state.
+    cc_isr_Core_IO.UserDefinedErrors.ClearErrorState
+    
+' . . . . . . . . . . . . . . . . . . . . . . . . . . .
+exit_Handler:
+
+    If p_outcome.AssertSuccessful Then
+        ' report any leftover errors.
+        Set p_outcome = This.ErrTracer.AssertLeftoverErrors()
+        If p_outcome.AssertSuccessful Then
+             Set p_outcome = cc_isr_Test_Fx.Assert.Pass("Primed pre-test #" & VBA.CStr(This.TestNumber))
+        Else
+            Set p_outcome = cc_isr_Test_Fx.Assert.Inconclusive("Failed priming pre-test #" & VBA.CStr(This.TestNumber) & _
+                ";" & VBA.vbCrLf & p_outcome.AssertMessage)
+        End If
+    End If
+    
+    Set This.BeforeEachAssert = p_outcome
+
+    On Error GoTo 0
+    Exit Sub
+
+' . . . . . . . . . . . . . . . . . . . . . . . . . . .
+err_Handler:
+  
+    ' append the error source
+    cc_isr_Core_IO.ErrorMessageBuilder.AppendErrSource p_procedureName, This.Name, ThisWorkbook
+    
+    ' enqueue the error or append its source to the last error.
+    cc_isr_Core_IO.UserDefinedErrors.EnqueueErrorObject
+    
+    ' exit this procedure (not an active handler)
+    On Error Resume Next
+    GoTo exit_Handler
+
+End Sub
+
+''' <summary>   Releases test elements after each tests is run. </summary>
+Public Sub AfterEach()
+    
+    Const p_procedureName As String = "AfterEach"
+    
+    ' Trap errors to the error handler.
+    On Error GoTo err_Handler
+
+    Dim p_outcome As cc_isr_Test_Fx.Assert
+    Set p_outcome = cc_isr_Test_Fx.Assert.Pass("Test #" & VBA.CStr(This.TestNumber) & " cleaned up.")
+
+    If Not This.BeforeEachAssert.AssertSuccessful Then _
+        Set p_outcome = cc_isr_Test_Fx.Assert.Inconclusive("Unable to cleanuip test #" & VBA.CStr(This.TestNumber) & _
+            ";" & VBA.vbCrLf & This.BeforeEachAssert.AssertMessage)
+
+    ' cleanup after each test.
+    
+    If p_outcome.AssertSuccessful Then
+    
+        Dim p_command As String
+        Dim p_sentCount As Integer
+        Dim p_reply As String
+    
+        ' clear errors if any so as to leave the instrument without errors.
+        p_command = "*CLS;*WAI;*OPC?"
+        p_sentCount = This.Socket.SendMessage(p_command & VBA.vbLf)
+        This.DelayStopper.Wait This.ReadAfterWriteDelay
+        
+        Dim p_details As String: p_details = VBA.vbNullString
+        If 0 > TryReceive(p_reply, p_details) Then
+            Set p_outcome = cc_isr_Test_Fx.Assert.Fail(p_details)
+        End If
+        This.DelayStopper.Wait This.ReadAfterWriteDelay
+        
+    End If
+        
+    ' Restore Prologix device
+    If p_outcome.AssertSuccessful And This.Port = This.PrologixPort Then
+    
+        ' set the read-after-write feature to false.
+        Set p_outcome = AssertShouldValidateQuery("++auto", "0")
+    
+        ' restore front panel operation of the currently addressed instrument.
+        
+        p_sentCount = This.Socket.SendMessage("++loc" & VBA.vbLf)
+        This.DelayStopper.Wait This.ReadAfterWriteDelay
+
+    End If
+        
+' . . . . . . . . . . . . . . . . . . . . . . . . . . .
+exit_Handler:
+
+    ' release the 'Before Each' cc_isr_Test_Fx.Assert.
+    Set This.BeforeEachAssert = Nothing
+
+    If p_outcome.AssertSuccessful Then
+    
+        ' report any leftover errors.
+        Set p_outcome = This.ErrTracer.AssertLeftoverErrors()
+        If p_outcome.AssertSuccessful Then
+            Set p_outcome = cc_isr_Test_Fx.Assert.Pass("Test #" & VBA.CStr(This.TestNumber) & " cleaned up.")
+        Else
+            Set p_outcome = cc_isr_Test_Fx.Assert.Inconclusive("Errors reported cleaning up test #" & VBA.CStr(This.TestNumber) & _
+                ";" & VBA.vbCrLf & p_outcome.AssertMessage)
+        End If
+    
+    End If
+
+    If Not p_outcome.AssertSuccessful Then _
+        This.ErrTracer.TraceError p_outcome.AssertMessage
+    
+    On Error GoTo 0
+    Exit Sub
+
+' . . . . . . . . . . . . . . . . . . . . . . . . . . .
+err_Handler:
+  
+    ' append the error source
+    cc_isr_Core_IO.ErrorMessageBuilder.AppendErrSource p_procedureName, This.Name, ThisWorkbook
+    
+    ' enqueue the error or append its source to the last error.
+    cc_isr_Core_IO.UserDefinedErrors.EnqueueErrorObject
+    
+    ' exit this procedure (not an active handler)
+    On Error Resume Next
+    GoTo exit_Handler
+
+End Sub
+
+''' <summary>   Releases the test class after all tests run. </summary>
+Public Sub AfterAll()
+    
+    Const p_procedureName As String = "AfterAll"
+    
+    ' Trap errors to the error handler
+    On Error GoTo err_Handler
+    
+    Dim p_outcome As cc_isr_Test_Fx.Assert: Set p_outcome = cc_isr_Test_Fx.Assert.Pass("All tests cleaned up.")
+    
+    ' cleanup after all tests.
+    
+    ' disconnect if connected
+    Dim p_details As String: p_details = VBA.vbNullString
+    If Not This.Socket Is Nothing Then
+        If Not This.Socket.TryCloseConnection(p_details) Then
+            Set p_outcome = cc_isr_Test_Fx.Assert.Fail(p_details)
+        End If
+    End If
+        
+    Set This.Socket = Nothing
+
+' . . . . . . . . . . . . . . . . . . . . . . . . . . .
+exit_Handler:
+
+    ' release the 'Before All' cc_isr_Test_Fx.Assert.
+    Set This.BeforeAllAssert = Nothing
+
+    ' report any leftover errors.
+    Set p_outcome = This.ErrTracer.AssertLeftoverErrors()
+    If p_outcome.AssertSuccessful Then
+        Set p_outcome = cc_isr_Test_Fx.Assert.Pass("Test #" & VBA.CStr(This.TestNumber) & " cleaned up.")
+    Else
+        Set p_outcome = cc_isr_Test_Fx.Assert.Inconclusive("Errors reported cleaning up all tests;" & _
+            VBA.vbCrLf & p_outcome.AssertMessage)
+    End If
+    
+    If Not p_outcome.AssertSuccessful Then _
+        This.ErrTracer.TraceError p_outcome.AssertMessage
+    
+    On Error GoTo 0
+    Exit Sub
+
+' . . . . . . . . . . . . . . . . . . . . . . . . . . .
+err_Handler:
+  
+    ' append the error source
+    cc_isr_Core_IO.ErrorMessageBuilder.AppendErrSource p_procedureName, This.Name, ThisWorkbook
+    
+    ' enqueue the error or append its source to the last error.
+    cc_isr_Core_IO.UserDefinedErrors.EnqueueErrorObject
+    
+    ' exit this procedure (not an active handler)
+    On Error Resume Next
+    GoTo exit_Handler
+
+End Sub
+
+''' <summary>   Returns the delimited Long value. </summary>
+''' <param name="a_value">      [Long] the value to delimit.</param>
+''' <param name="a_minValue">   [Long] the minimum. </param>
+''' <param name="a_maxValue">   [Long] the maximum. </param>
+Public Function DelimitLong(ByVal a_value As Long, _
+        ByVal a_minValue As Long, ByVal a_maxValue As Long) As Long
+    If a_value < a_minValue Then a_value = a_minValue
+    If a_value > a_maxValue Then a_value = a_maxValue
+    DelimitLong = a_value
+End Function
+
+Public Function TryReceive(ByRef a_reply As String, ByRef a_details As String) As Integer
+
+    Dim p_messageAvailable As Boolean
+    Dim p_MAV As Integer: p_MAV = 16
+    Dim p_statusByte As Integer
+    If Not This.AssertTalkOnWrite Then
+        
+        ' wait for serial poll
+        p_messageAvailable = AwaitMessageAvailable(p_MAV, This.ReceiveTimeout, p_statusByte, a_details)
+    
+    End If
+    
+    Debug.Print "    status byte: " & VBA.CStr(p_statusByte)
+    
+    If p_messageAvailable Then
+    
+        Dim p_command As String
+        If Not This.AssertTalkOnWrite Then
+            p_command = "++read_eoi"
+            Dim p_sentCount As Integer
+            p_sentCount = This.Socket.SendMessage(p_command & VBA.vbLf)
+            This.DelayStopper.Wait This.ReadAfterWriteDelay
+        End If
+        
+        TryReceive = This.Socket.TryReceive(a_reply, a_details)
+    
+    Else
+        TryReceive = -1
+    End If
+
+End Function
+
+Public Function TryQuery(ByVal a_command As String, ByRef a_reply As String, ByRef a_details As String) As Integer
+    
+    ' send the command
+    Dim p_sentCount As Integer
+    p_sentCount = This.Socket.SendMessage(a_command & VBA.vbLf)
+    This.DelayStopper.Wait This.ReadAfterWriteDelay
+
+    TryQuery = TryReceive(a_reply, a_details)
+
+End Function
+
+''' <summary>   Returns the delimited integer value. </summary>
+''' <param name="a_value">      [Integer] the value to delimit.</param>
+''' <param name="a_minValue">   [Integer] the minimum. </param>
+''' <param name="a_maxValue">   [Integer] the maximum. </param>
+Public Function DelimitInteger(ByVal a_value As Integer, _
+        ByVal a_minValue As Integer, ByVal a_maxValue As Integer) As Integer
+    If a_value < a_minValue Then a_value = a_minValue
+    If a_value > a_maxValue Then a_value = a_maxValue
+    DelimitInteger = a_value
+End Function
+
+''' <summary>   Asserts a valid serial poll. </summary>
+Private Function AssertSerialPollShouldValidate(ByVal a_value As Integer, ByVal a_bitValue As Integer) As cc_isr_Test_Fx.Assert
+    Set AssertSerialPollShouldValidate = cc_isr_Test_Fx.Assert.Pass()
+    If Not This.AssertTalkOnWrite Then
+        Dim p_elapsed As Double
+        Dim p_statusByte As Integer
+        Dim p_stopper As cc_isr_Core_IO.Stopwatch
+        Set p_stopper = cc_isr_Core_IO.Factory.NewStopwatch()
+        p_stopper.Restart
+        Set AssertSerialPollShouldValidate = AssertSerialPollShouldValidate_(a_value, a_bitValue, p_statusByte)
+        p_elapsed = p_stopper.ElapsedMilliseconds
+        Debug.Print "    Prologix Serial Poll is " & VBA.CStr(p_statusByte) & _
+            " in " & Format(p_elapsed, "0.0")
+    End If
+End Function
+
+Public Function SerialPoll(ByRef a_details As String) As Integer
+    
+    Dim p_command As String
+    p_command = "++spoll"
+    
+    Dim p_sentCount As Integer
+    p_sentCount = This.Socket.SendMessage(p_command & VBA.vbLf)
+    This.DelayStopper.Wait This.ReadAfterWriteDelay
+    
+    Dim p_reply As String
+    Dim p_receiveCount As Integer
+    p_receiveCount = This.Socket.TryReceive(p_reply, a_details)
+    Dim p_statusByte As Integer
+    If 0 < p_receiveCount Then
+        If Not cc_isr_Core.StringExtensions.TryParseInteger(p_reply, p_statusByte, a_details) Then
+            p_statusByte = -1
+        End If
+    Else
+        p_statusByte = -1
+    End If
+    SerialPoll = p_statusByte
+
+End Function
+
+Public Function IsMessageAvailable(ByVal a_MAV As Integer, ByRef a_statusByte As Integer, ByRef a_details As String) As Boolean
+    
+    a_statusByte = SerialPoll(a_details)
+    If a_statusByte > 0 Then
+        IsMessageAvailable = (a_MAV - (a_MAV And a_statusByte))
+    Else
+        IsMessageAvailable = False
+    End If
+End Function
+
+Public Function AwaitMessageAvailable(ByVal a_MAV As Integer, ByVal timeout As Integer, _
+    ByRef a_statusByte As Integer, ByRef a_details As String) As Boolean
+
+    Dim p_stopper As cc_isr_Core_IO.Stopwatch
+    p_stopper = cc_isr_Core_IO.Factory.NewStopwatch()
+    p_stopper.Restart
+    Dim p_messageAvailable As Boolean
+    p_messageAvailable = IsMessageAvailable(a_MAV, a_statusByte, a_details)
+    While Not p_messageAvailable And (p_stopper.ElapsedMilliseconds < timeout)
+        DoEvents
+        p_messageAvailable = IsMessageAvailable(a_MAV, a_statusByte, a_details)
+    Wend
+    AwaitMessageAvailable = p_messageAvailable
+    
+End Function
+
+''' <summary>   Asserts a valid serial poll. </summary>
+Private Function AssertSerialPollShouldValidate_(ByVal a_value As Integer, ByVal a_bitValue As Integer, _
+    ByRef a_statusByte As Integer) As cc_isr_Test_Fx.Assert
+    
+    Dim p_outcome As cc_isr_Test_Fx.Assert
+    Dim p_command As String
+    Dim p_sentCount As Integer
+    Dim p_receiveCount As Integer
+    Dim p_reply As String
+    Dim p_details As String: p_details = VBA.vbNullString
+    
+    p_command = "++spoll"
+    
+    ' send the command
+    p_sentCount = This.Socket.SendMessage(p_command & VBA.vbLf)
+    This.DelayStopper.Wait This.ReadAfterWriteDelay
+
+    ' the receive count is negative if error
+    p_receiveCount = This.Socket.TryReceive(p_reply, p_details)
+    If 0 > p_receiveCount Then
+        Set p_outcome = cc_isr_Test_Fx.Assert.Fail(p_details)
+    Else
+        Set p_outcome = cc_isr_Test_Fx.Assert.Pass()
+    End If
+    This.DelayStopper.Wait This.ReadAfterWriteDelay
+    
+    If p_outcome.AssertSuccessful Then
+    
+        If Not cc_isr_Core.StringExtensions.TryParseInteger(p_reply, a_statusByte, p_details) Then
+            Set p_outcome = cc_isr_Test_Fx.Assert.Fail(p_details)
+        Else
+            Set p_outcome = cc_isr_Test_Fx.Assert.AreEqual(a_value, a_bitValue And a_statusByte, _
+                "    Status byte '" & VBA.CStr(a_statusByte) & "' bits not matching the expected value.")
+        End If
+    End If
+            
+    Set AssertSerialPollShouldValidate_ = p_outcome
+End Function
+
+Private Function AssertShouldValidateQuery(ByVal a_command As String, ByVal a_value As String) As cc_isr_Test_Fx.Assert
+    Dim p_elapsed As Double
+    Dim p_stopper As cc_isr_Core_IO.Stopwatch
+    Set p_stopper = cc_isr_Core_IO.Factory.NewStopwatch()
+    p_stopper.Restart
+    Set AssertShouldValidateQuery = AssertShouldValidateQuery_(a_command, a_value)
+    p_elapsed = p_stopper.ElapsedMilliseconds
+    Debug.Print "    Prologix '" & a_command & "' set to " & VBA.CStr(a_value) & _
+        " in " & Format(p_elapsed, "0.0")
+End Function
+
+Private Function AssertShouldValidateQuery_(ByVal a_command As String, ByVal a_value As String) As cc_isr_Test_Fx.Assert
+
+    Dim p_outcome As cc_isr_Test_Fx.Assert
+    Dim p_command As String
+    Dim p_sentCount As Integer
+    Dim p_receiveCount As Integer
+    Dim p_reply As String
+    Dim p_details As String: p_details = VBA.vbNullString
+    
+    ' set auto read after write
+    p_command = a_command & " " & a_value
+
+    ' send the command
+    p_sentCount = This.Socket.SendMessage(p_command & VBA.vbLf)
+    This.DelayStopper.Wait This.ReadAfterWriteDelay
+
+    ' validate reading
+    
+    ' set auto query command
+    p_command = a_command
+    
+    p_sentCount = This.Socket.SendMessage(p_command & VBA.vbLf)
+    This.DelayStopper.Wait This.ReadAfterWriteDelay
+    
+    ' the receive count is negative if error
+    p_receiveCount = This.Socket.TryReceive(p_reply, p_details)
+    If 0 > p_receiveCount Then
+        Set p_outcome = cc_isr_Test_Fx.Assert.Fail(p_details)
+    Else
+        Set p_outcome = cc_isr_Test_Fx.Assert.Pass()
+    End If
+    This.DelayStopper.Wait This.ReadAfterWriteDelay
+    
+    If p_outcome.AssertSuccessful Then _
+        Set p_outcome = cc_isr_Test_Fx.Assert.AreEqual(a_value, p_reply, _
+            " Command '" & a_command & "' value does not match its expected.")
+            
+    Set AssertShouldValidateQuery_ = p_outcome
+
+End Function
+
+''' <summary>   Unit test. Asserts that the stream socket should query a device identity. </summary>
+''' <returns>   [<see cref="cc_isr_Test_Fx.Assert"/>] instance where
+''' <see cref="Assert.AssertSuccessful"/> is <c>True</c> if the test passed. </returns>
+Public Function TestSocketShouldConnect() As cc_isr_Test_Fx.Assert
+
+    Const p_procedureName As String = "TestSocketShouldConnect"
+    
+    ' Trap errors to the error handler
+    On Error GoTo err_Handler
+    
+    Dim p_outcome As cc_isr_Test_Fx.Assert: Set p_outcome = This.BeforeEachAssert
+    
+    Dim p_command As String
+    Dim p_sentCount As Integer
+    Dim p_reply As String
+    
+    If p_outcome.AssertSuccessful Then
+            
+        ' check if connected and clear errors.
+        p_command = "*CLS;*WAI;*OPC?"
+        p_sentCount = This.Socket.SendMessage(p_command & VBA.vbLf)
+        This.DelayStopper.Wait This.ReadAfterWriteDelay
+        
+        If p_outcome.AssertSuccessful And This.Port = This.PrologixPort Then
+        
+            Dim p_serialPollOutcome As cc_isr_Test_Fx.Assert
+            Set p_serialPollOutcome = AssertSerialPollShouldValidate(16, 16)
+            If Not p_serialPollOutcome.AssertSuccessful Then
+                Debug.Print p_serialPollOutcome.AssertMessage
+            End If
+        
+        End If
+        
+        
+        Dim p_details As String: p_details = VBA.vbNullString
+        If 0 > TryReceive(p_reply, p_details) Then
+            Set p_outcome = cc_isr_Test_Fx.Assert.Fail(p_details)
+        End If
+        This.DelayStopper.Wait This.ReadAfterWriteDelay
+
+        If p_outcome.AssertSuccessful And This.Port = This.PrologixPort Then
+        
+            Set p_serialPollOutcome = AssertSerialPollShouldValidate(0, 16)
+            If Not p_serialPollOutcome.AssertSuccessful Then
+                Debug.Print p_serialPollOutcome.AssertMessage
+            End If
+        
+        End If
+        
+
+    End If
+    
+    If p_outcome.AssertSuccessful Then _
+        Set p_outcome = cc_isr_Test_Fx.Assert.AreEqual("1", p_reply, _
+            "Unable to prime pre-test #" & VBA.CStr(This.TestNumber) & _
+            "; Operation completion query should return the correct reply.")
+
+' . . . . . . . . . . . . . . . . . . . . . . . . . . .
+exit_Handler:
+
+    If p_outcome.AssertSuccessful Then _
+        Set p_outcome = This.ErrTracer.AssertLeftoverErrors
+    
+    Debug.Print p_outcome.BuildReport("TestSocketShouldConnect")
+    
+    Set TestSocketShouldConnect = p_outcome
+    
+    On Error GoTo 0
+    Exit Function
+
+' . . . . . . . . . . . . . . . . . . . . . . . . . . .
+err_Handler:
+  
+    ' append the error source
+    cc_isr_Core_IO.ErrorMessageBuilder.AppendErrSource p_procedureName, This.Name, ThisWorkbook
+    
+    ' enqueue the error or append its source to the last error.
+    cc_isr_Core_IO.UserDefinedErrors.EnqueueErrorObject
+    
+    ' exit this procedure (not an active handler)
+    On Error Resume Next
+    GoTo exit_Handler
+    
+End Function
+
+''' <summary>   Unit test. Asserts that the stream socket should query a device identity. </summary>
+''' <returns>   [<see cref="cc_isr_Test_Fx.Assert"/>] instance where
+''' <see cref="Assert.AssertSuccessful"/> is <c>True</c> if the test passed. </returns>
+Public Function TestSocketShouldQueryIdentity() As cc_isr_Test_Fx.Assert
+
+    Const p_procedureName As String = "TestSocketShouldQueryIdentity"
+    
+    ' Trap errors to the error handler
+    On Error GoTo err_Handler
+    
+    Dim p_outcome As cc_isr_Test_Fx.Assert: Set p_outcome = This.BeforeEachAssert
+    
+    Dim p_command As String: p_command = "*IDN?"
+    Dim p_sentCount As Integer
+    Dim p_identity As String
+    Dim p_readCount As Integer
+    Dim p_reply As String
+    
+    If p_outcome.AssertSuccessful Then
+            
+        ' send the command
+        p_sentCount = This.Socket.SendMessage(p_command & VBA.vbLf)
+        This.DelayStopper.Wait This.ReadAfterWriteDelay
+    
+        If p_outcome.AssertSuccessful And This.Port = This.PrologixPort Then
+        
+            Dim p_serialPollOutcome As cc_isr_Test_Fx.Assert
+            Set p_serialPollOutcome = AssertSerialPollShouldValidate(16, 16)
+            If Not p_serialPollOutcome.AssertSuccessful Then
+                Debug.Print p_serialPollOutcome.AssertMessage
+            End If
+        
+        End If
+        
+        Dim p_details As String: p_details = VBA.vbNullString
+        If 0 > TryReceive(p_reply, p_details) Then
+            Set p_outcome = cc_isr_Test_Fx.Assert.Fail(p_details)
+        End If
+        This.DelayStopper.Wait This.ReadAfterWriteDelay
+
+        If p_outcome.AssertSuccessful And This.Port = This.PrologixPort Then
+        
+            Set p_serialPollOutcome = AssertSerialPollShouldValidate(0, 16)
+            If Not p_serialPollOutcome.AssertSuccessful Then
+                Debug.Print p_serialPollOutcome.AssertMessage
+            End If
+        
+        End If
+        
+
+    End If
+
+' . . . . . . . . . . . . . . . . . . . . . . . . . . .
+exit_Handler:
+
+    If p_outcome.AssertSuccessful Then _
+        Set p_outcome = This.ErrTracer.AssertLeftoverErrors
+    
+    Debug.Print p_outcome.BuildReport("TestSocketShouldQueryIdentity")
+    
+    Set TestSocketShouldQueryIdentity = p_outcome
+    
+    On Error GoTo 0
+    Exit Function
+
+' . . . . . . . . . . . . . . . . . . . . . . . . . . .
+err_Handler:
+  
+    ' append the error source
+    cc_isr_Core_IO.ErrorMessageBuilder.AppendErrSource p_procedureName, This.Name, ThisWorkbook
+    
+    ' enqueue the error or append its source to the last error.
+    cc_isr_Core_IO.UserDefinedErrors.EnqueueErrorObject
+    
+    ' exit this procedure (not an active handler)
+    On Error Resume Next
+    GoTo exit_Handler
+    
+End Function
+
+
+
+
+

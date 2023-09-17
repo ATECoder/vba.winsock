@@ -82,7 +82,7 @@ Public Sub BeforeAll()
     ' Trap errors to the error handler
     On Error GoTo err_Handler
 
-    Dim p_outcome As cc_isr_Test_Fx.Assert: Set p_outcome = Assert.Pass("Primed to run all tests.")
+    Dim p_outcome As cc_isr_Test_Fx.Assert: Set p_outcome = cc_isr_Test_Fx.Assert.Pass("Primed to run all tests.")
 
     This.Name = "IPv4StreamSocketTests"
     
@@ -100,9 +100,9 @@ exit_Handler:
         ' report any leftover errors.
         Set p_outcome = This.ErrTracer.AssertLeftoverErrors()
         If p_outcome.AssertSuccessful Then
-            Set p_outcome = Assert.Pass("Primed to run all tests.")
+            Set p_outcome = cc_isr_Test_Fx.Assert.Pass("Primed to run all tests.")
         Else
-            Set p_outcome = Assert.Inconclusive("Failed priming all tests;" & _
+            Set p_outcome = cc_isr_Test_Fx.Assert.Inconclusive("Failed priming all tests;" & _
                 VBA.vbCrLf & p_outcome.AssertMessage)
         End If
     End If
@@ -143,9 +143,9 @@ Public Sub BeforeEach()
     Dim p_outcome As cc_isr_Test_Fx.Assert
 
     If This.BeforeAllAssert.AssertSuccessful Then
-         Set p_outcome = Assert.Pass("Primed pre-test #" & VBA.CStr(This.TestNumber))
+         Set p_outcome = cc_isr_Test_Fx.Assert.Pass("Primed pre-test #" & VBA.CStr(This.TestNumber))
     Else
-        Set p_outcome = Assert.Inconclusive("Unable to prime pre-test #" & VBA.CStr(This.TestNumber) & _
+        Set p_outcome = cc_isr_Test_Fx.Assert.Inconclusive("Unable to prime pre-test #" & VBA.CStr(This.TestNumber) & _
             ";" & VBA.vbCrLf & This.BeforeAllAssert.AssertMessage)
     End If
     
@@ -159,9 +159,9 @@ exit_Handler:
         ' report any leftover errors.
         Set p_outcome = This.ErrTracer.AssertLeftoverErrors()
         If p_outcome.AssertSuccessful Then
-             Set p_outcome = Assert.Pass("Primed pre-test #" & VBA.CStr(This.TestNumber))
+             Set p_outcome = cc_isr_Test_Fx.Assert.Pass("Primed pre-test #" & VBA.CStr(This.TestNumber))
         Else
-            Set p_outcome = Assert.Inconclusive("Failed priming pre-test #" & VBA.CStr(This.TestNumber) & _
+            Set p_outcome = cc_isr_Test_Fx.Assert.Inconclusive("Failed priming pre-test #" & VBA.CStr(This.TestNumber) & _
                 ";" & VBA.vbCrLf & p_outcome.AssertMessage)
         End If
     End If
@@ -198,7 +198,7 @@ Public Sub AfterEach()
     On Error GoTo err_Handler
 
     Dim p_outcome As cc_isr_Test_Fx.Assert
-    Set p_outcome = Assert.Pass("Test #" & VBA.CStr(This.TestNumber) & " cleaned up.")
+    Set p_outcome = cc_isr_Test_Fx.Assert.Pass("Test #" & VBA.CStr(This.TestNumber) & " cleaned up.")
 
     Set This.BeforeEachAssert = Nothing
 
@@ -208,9 +208,9 @@ exit_Handler:
     ' report any leftover errors.
     Set p_outcome = This.ErrTracer.AssertLeftoverErrors()
     If p_outcome.AssertSuccessful Then
-        Set p_outcome = Assert.Pass("Test #" & VBA.CStr(This.TestNumber) & " cleaned up.")
+        Set p_outcome = cc_isr_Test_Fx.Assert.Pass("Test #" & VBA.CStr(This.TestNumber) & " cleaned up.")
     Else
-        Set p_outcome = Assert.Inconclusive("Errors reported cleaning up test #" & VBA.CStr(This.TestNumber) & _
+        Set p_outcome = cc_isr_Test_Fx.Assert.Inconclusive("Errors reported cleaning up test #" & VBA.CStr(This.TestNumber) & _
             ";" & VBA.vbCrLf & p_outcome.AssertMessage)
     End If
     
@@ -247,7 +247,7 @@ Public Sub AfterAll()
     On Error GoTo err_Handler
     
     Dim p_outcome As cc_isr_Test_Fx.Assert
-    Set p_outcome = Assert.Pass("All tests cleaned up.")
+    Set p_outcome = cc_isr_Test_Fx.Assert.Pass("All tests cleaned up.")
     
     Set This.BeforeAllAssert = Nothing
 
@@ -257,9 +257,9 @@ exit_Handler:
     ' report any leftover errors.
     Set p_outcome = This.ErrTracer.AssertLeftoverErrors()
     If p_outcome.AssertSuccessful Then
-        Set p_outcome = Assert.Pass("Test #" & VBA.CStr(This.TestNumber) & " cleaned up.")
+        Set p_outcome = cc_isr_Test_Fx.Assert.Pass("Test #" & VBA.CStr(This.TestNumber) & " cleaned up.")
     Else
-        Set p_outcome = Assert.Inconclusive("Errors reported cleaning up all tests;" & _
+        Set p_outcome = cc_isr_Test_Fx.Assert.Inconclusive("Errors reported cleaning up all tests;" & _
             VBA.vbCrLf & p_outcome.AssertMessage)
     End If
     
@@ -302,23 +302,23 @@ Public Function TestCreateSocket() As cc_isr_Test_Fx.Assert
     If p_outcome.AssertSuccessful Then
         Set p_socket = cc_isr_Winsock.Factory.NewIPv4StreamSocket
         ' check if socket has a valid id
-        Set p_outcome = Assert.IsTrue(p_socket.SocketId <> wsock32.ws32_INVALID_SOCKET, _
+        Set p_outcome = cc_isr_Test_Fx.Assert.IsTrue(p_socket.SocketId <> wsock32.ws32_INVALID_SOCKET, _
             "Failed creating socket; socket id " & Str$(p_socket.SocketId) & _
             " must not equal to wsock32.INVALID_SOCKET=" & wsock32.ws32_INVALID_SOCKET)
     End If
     
     If p_outcome.AssertSuccessful Then
-        Set p_outcome = Assert.IsTrue(Winsock.Initiated, _
+        Set p_outcome = cc_isr_Test_Fx.Assert.IsTrue(Winsock.Initiated, _
             "Winsock should be initiated when a socket is created")
     End If
     
     If p_outcome.AssertSuccessful Then
-        Set p_outcome = Assert.IsFalse(Winsock.Disposed, "Winsock should not be disposed when a socket is created")
+        Set p_outcome = cc_isr_Test_Fx.Assert.IsFalse(Winsock.Disposed, "Winsock should not be disposed when a socket is created")
     End If
     
     
     If p_outcome.AssertSuccessful Then
-        Set p_outcome = Assert.AreEqual(Winsock.SocketCount, 1, _
+        Set p_outcome = cc_isr_Test_Fx.Assert.AreEqual(Winsock.SocketCount, 1, _
             "Winsock socket count should be 1 after registering a single socket but is " & Str$(Winsock.SocketCount))
     End If
     
@@ -326,17 +326,17 @@ Public Function TestCreateSocket() As cc_isr_Test_Fx.Assert
     Set p_socket = Nothing
     
     If p_outcome.AssertSuccessful Then
-        Set p_outcome = Assert.AreEqual(Winsock.SocketCount, 0, _
+        Set p_outcome = cc_isr_Test_Fx.Assert.AreEqual(Winsock.SocketCount, 0, _
             "Winsock socket count should be 0 after nulling single socket but is " & Str$(Winsock.SocketCount))
     End If
 
     If p_outcome.AssertSuccessful Then
-        Set p_outcome = Assert.IsFalse(Winsock.Initiated, _
+        Set p_outcome = cc_isr_Test_Fx.Assert.IsFalse(Winsock.Initiated, _
             "Winsock should no longer be initiated after the last socket was set to nothing")
     End If
     
     If p_outcome.AssertSuccessful Then
-        Set p_outcome = Assert.IsTrue(Winsock.Disposed, _
+        Set p_outcome = cc_isr_Test_Fx.Assert.IsTrue(Winsock.Disposed, _
             "Winsock should be disposed after the last socket was set to nothing")
     End If
        

@@ -1,4 +1,4 @@
-Attribute VB_Name = "SocketQueryIdentityTests"
+Attribute VB_Name = "SocketStreamQueryTests"
 ''' - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ''' <summary>   Socket query identity Tests. </summary>
 ''' - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -14,8 +14,9 @@ Private Type this_
     Host As String
     Port As Long
     PrologixPort As Long
-    SocketReceiveTimeout As Integer
     Socket As IPv4StreamSocket
+    ReceiveTimeout As Long
+    ReadAfterWriteDelay As Integer
     DelayStopper As cc_isr_Core_IO.Stopwatch
     ErrTracer As IErrTracer
     TestCount As Integer
@@ -33,9 +34,9 @@ Public Function RunTest(ByVal a_testNumber As Integer) As cc_isr_Test_Fx.Assert
     BeforeEach
     Select Case a_testNumber
         Case 1
-            Set p_outcome = TestSocketShouldRawQueryIdentity
+            Set p_outcome = TestSocketShouldConnect
         Case 2
-            Set p_outcome = TestSocketShouldBufferQueryIdentity
+            Set p_outcome = TestSocketShouldQueryIdentity
         Case Else
     End Select
     Set RunTest = p_outcome
@@ -95,7 +96,8 @@ Public Sub BeforeAll()
     This.Host = "192.168.0.252"
     This.Port = 1234
     This.PrologixPort = 1234
-    This.SocketReceiveTimeout = 100
+    This.ReceiveTimeout = 3000
+    This.ReadAfterWriteDelay = 5
     
     Set This.ErrTracer = New ErrTracer
     
@@ -108,7 +110,10 @@ Public Sub BeforeAll()
         
     Set This.Socket = cc_isr_Winsock.Factory.NewIPv4StreamSocket()
    
-    This.Socket.OpenConnection This.Host, This.Port
+    Dim p_details As String
+    If Not This.Socket.TryOpenConnection(This.Host, This.Port, This.ReceiveTimeout, p_details) Then
+        Set p_outcome = cc_isr_Test_Fx.Assert.Fail(p_details)
+    End If
     
 ' . . . . . . . . . . . . . . . . . . . . . . . . . . .
 exit_Handler:
@@ -192,12 +197,12 @@ Public Sub BeforeEach()
             ' send the command, which may cause Query Unterminated because we are setting the device to talk
             ' where there is nothing to talk.
             p_sentCount = This.Socket.SendMessage(p_command & VBA.vbLf)
-            This.DelayStopper.Wait 5
+            This.DelayStopper.Wait This.ReadAfterWriteDelay
     
             ' disables front panel operation of the currently addressed instrument.
             
             p_sentCount = This.Socket.SendMessage("++llo" & VBA.vbLf)
-            This.DelayStopper.Wait 5
+            This.DelayStopper.Wait This.ReadAfterWriteDelay
     
         End If
     
@@ -206,14 +211,18 @@ Public Sub BeforeEach()
         ' here we add *OPC? to prevent the query unterminated error.
     
         p_sentCount = This.Socket.SendMessage("*CLS;*WAI;*OPC?" & VBA.vbLf)
-        This.DelayStopper.Wait 5
+        This.DelayStopper.Wait This.ReadAfterWriteDelay
         
-        p_reply = This.Socket.ReceiveRaw
-        This.DelayStopper.Wait 5
+        Dim p_details As String: p_details = VBA.vbNullString
+        If Not This.Socket.TryReceive(p_reply, p_details) Then
+            Set p_outcome = cc_isr_Test_Fx.Assert.Fail(p_details)
+        End If
+        This.DelayStopper.Wait This.ReadAfterWriteDelay
         
-        Set p_outcome = cc_isr_Test_Fx.Assert.AreEqual("1", p_reply, _
+        If p_outcome.AssertSuccessful Then _
+            Set p_outcome = cc_isr_Test_Fx.Assert.AreEqual("1", p_reply, _
                 "Unable to prime pre-test #" & VBA.CStr(This.TestNumber) & _
-                "; Operation completion query should send the correct reply.")
+                "; Operation completion query should return the correct reply.")
                         
     End If
     
@@ -275,12 +284,16 @@ Public Sub AfterEach()
         Dim p_reply As String
     
         ' clear errors if any so as to leave the instrument without errors.
-        p_sentCount = This.Socket.SendMessage("*CLS;*WAI;*OPC?" & VBA.vbLf)
-        This.DelayStopper.Wait 5
+        p_command = "*CLS;*WAI;*OPC?"
+        p_sentCount = This.Socket.SendMessage(p_command & VBA.vbLf)
+        This.DelayStopper.Wait This.ReadAfterWriteDelay
         
-        p_reply = This.Socket.ReceiveRaw
-        This.DelayStopper.Wait 5
-
+        Dim p_details As String: p_details = VBA.vbNullString
+        If Not This.Socket.TryReceive(p_reply, p_details) Then
+            p_outcome = cc_isr_Test_Fx.Assert.Fail(p_details)
+        End If
+        This.DelayStopper.Wait This.ReadAfterWriteDelay
+        
         ' Restore Prologix device
         If This.BeforeEachAssert.AssertSuccessful And This.Port = This.PrologixPort Then
         
@@ -289,12 +302,12 @@ Public Sub AfterEach()
             ' send the command, which may cause Query Unterminated because we are setting the device to talk
             ' where there is nothing to talk.
             p_sentCount = This.Socket.SendMessage(p_command & VBA.vbLf)
-            This.DelayStopper.Wait 5
+            This.DelayStopper.Wait This.ReadAfterWriteDelay
 
             ' restore front panel operation of the currently addressed instrument.
             
             p_sentCount = This.Socket.SendMessage("++loc" & VBA.vbLf)
-            This.DelayStopper.Wait 5
+            This.DelayStopper.Wait This.ReadAfterWriteDelay
 
         End If
 
@@ -349,9 +362,13 @@ Public Sub AfterAll()
     ' cleanup after all tests.
     
     ' disconnect if connected
-    If Not This.Socket Is Nothing Then _
-        This.Socket.CloseConnection
-
+    Dim p_details As String: p_details = VBA.vbNullString
+    If Not This.Socket Is Nothing Then
+        If Not This.Socket.TryCloseConnection(p_details) Then
+            Set p_outcome = cc_isr_Test_Fx.Assert.Fail(p_details)
+        End If
+    End If
+        
     Set This.Socket = Nothing
 
 ' . . . . . . . . . . . . . . . . . . . . . . . . . . .
@@ -393,28 +410,38 @@ End Sub
 ''' <summary>   Unit test. Asserts that the stream socket should query a device identity. </summary>
 ''' <returns>   [<see cref="cc_isr_Test_Fx.Assert"/>] instance where
 ''' <see cref="Assert.AssertSuccessful"/> is <c>True</c> if the test passed. </returns>
-Public Function TestSocketShouldRawQueryIdentity() As cc_isr_Test_Fx.Assert
+Public Function TestSocketShouldConnect() As cc_isr_Test_Fx.Assert
 
-    Const p_procedureName As String = "TestSocketShouldRawQueryIdentity"
+    Const p_procedureName As String = "TestSocketShouldConnect"
     
     ' Trap errors to the error handler
     On Error GoTo err_Handler
     
     Dim p_outcome As cc_isr_Test_Fx.Assert: Set p_outcome = This.BeforeEachAssert
     
-    Dim p_command As String: p_command = "*IDN?"
+    Dim p_command As String
     Dim p_sentCount As Integer
-    Dim p_identity As String
+    Dim p_reply As String
     
     If p_outcome.AssertSuccessful Then
             
-        ' send the command
+        ' check if connected and clear errors.
+        p_command = "*CLS;*WAI;*OPC?"
         p_sentCount = This.Socket.SendMessage(p_command & VBA.vbLf)
-        This.DelayStopper.Wait 5
-            
-        p_identity = This.Socket.ReceiveRaw()
+        This.DelayStopper.Wait This.ReadAfterWriteDelay
+        
+        Dim p_details As String: p_details = VBA.vbNullString
+        If Not This.Socket.TryReceive(p_reply, p_details) Then
+            p_outcome = cc_isr_Test_Fx.Assert.Fail(p_details)
+        End If
+        This.DelayStopper.Wait This.ReadAfterWriteDelay
 
     End If
+    
+    If p_outcome.AssertSuccessful Then _
+        Set p_outcome = cc_isr_Test_Fx.Assert.AreEqual("1", p_reply, _
+            "Unable to prime pre-test #" & VBA.CStr(This.TestNumber) & _
+            "; Operation completion query should return the correct reply.")
 
 ' . . . . . . . . . . . . . . . . . . . . . . . . . . .
 exit_Handler:
@@ -422,9 +449,9 @@ exit_Handler:
     If p_outcome.AssertSuccessful Then _
         Set p_outcome = This.ErrTracer.AssertLeftoverErrors
     
-    Debug.Print p_outcome.BuildReport("TestSocketShouldRawQueryIdentity")
+    Debug.Print p_outcome.BuildReport("TestSocketShouldConnect")
     
-    Set TestSocketShouldRawQueryIdentity = p_outcome
+    Set TestSocketShouldConnect = p_outcome
     
     On Error GoTo 0
     Exit Function
@@ -447,9 +474,9 @@ End Function
 ''' <summary>   Unit test. Asserts that the stream socket should query a device identity. </summary>
 ''' <returns>   [<see cref="cc_isr_Test_Fx.Assert"/>] instance where
 ''' <see cref="Assert.AssertSuccessful"/> is <c>True</c> if the test passed. </returns>
-Public Function TestSocketShouldBufferQueryIdentity() As cc_isr_Test_Fx.Assert
+Public Function TestSocketShouldQueryIdentity() As cc_isr_Test_Fx.Assert
 
-    Const p_procedureName As String = "TestSocketShouldBufferQueryIdentity"
+    Const p_procedureName As String = "TestSocketShouldQueryIdentity"
     
     ' Trap errors to the error handler
     On Error GoTo err_Handler
@@ -459,20 +486,20 @@ Public Function TestSocketShouldBufferQueryIdentity() As cc_isr_Test_Fx.Assert
     Dim p_command As String: p_command = "*IDN?"
     Dim p_sentCount As Integer
     Dim p_identity As String
-    Dim p_maximumLength As Integer: p_maximumLength = 1024
-    Dim p_buffer As String * 1024
     Dim p_readCount As Integer
+    Dim p_reply As String
     
     If p_outcome.AssertSuccessful Then
             
         ' send the command
         p_sentCount = This.Socket.SendMessage(p_command & VBA.vbLf)
-        This.DelayStopper.Wait 5
+        This.DelayStopper.Wait This.ReadAfterWriteDelay
     
-        ' receive the reading
-        p_readCount = This.Socket.ReceiveTerminatedMessage(p_buffer, p_maximumLength, VBA.vbLf)
-    
-        p_identity = p_buffer
+        Dim p_details As String: p_details = VBA.vbNullString
+        If Not This.Socket.TryReceive(p_reply, p_details) Then
+            p_outcome = cc_isr_Test_Fx.Assert.Fail(p_details)
+        End If
+        This.DelayStopper.Wait This.ReadAfterWriteDelay
 
     End If
 
@@ -482,9 +509,9 @@ exit_Handler:
     If p_outcome.AssertSuccessful Then _
         Set p_outcome = This.ErrTracer.AssertLeftoverErrors
     
-    Debug.Print p_outcome.BuildReport("TestSocketShouldBufferQueryIdentity")
+    Debug.Print p_outcome.BuildReport("TestSocketShouldQueryIdentity")
     
-    Set TestSocketShouldBufferQueryIdentity = p_outcome
+    Set TestSocketShouldQueryIdentity = p_outcome
     
     On Error GoTo 0
     Exit Function
@@ -503,6 +530,8 @@ err_Handler:
     GoTo exit_Handler
     
 End Function
+
+
 
 
 

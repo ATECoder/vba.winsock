@@ -239,7 +239,7 @@ Private Function IConnectable_OpenConnection(ByVal a_host As String, ByVal a_por
         This.TcpClientSocket.OpenConnection a_host, a_port
         
         If This.TcpClientSocket.Connected Then
-            This.TcpClientSocket.SetReceiveTimeout a_timeoutMs
+            This.TcpClientSocket.ReceiveTimeoutSetter a_timeoutMs
         End If
         
         OnConnectionChanged Me.Connected

@@ -193,7 +193,7 @@ Private Sub Class_Initialize()
         
         ' set the receive timeout to its default value
         
-        Me.SetReceiveTimeout DEFAULT_TIMEOUT_MS
+        Me.ReceiveTimeoutSetter DEFAULT_TIMEOUT_MS
     End If
     
 End Sub
@@ -239,7 +239,7 @@ Public Function Accept(ByVal a_connectedSocketId As Long, _
     
     This.SocketId = a_connectedSocketId
     This.Connected = True
-    Me.SetReceiveTimeout a_timeoutMs
+    Me.ReceiveTimeoutSetter a_timeoutMs
     Set Accept = Me
 
 End Function
@@ -280,9 +280,11 @@ End Property
 ''' <summary>   Opens a socket connection and sets and returns the socket id. </summary>
 ''' <param name="a_host">      [String] An IPv4 dotted-decimal host address. </param>
 ''' <param name="a_port">      [Long] The port that the server is listening on. </param>
+''' <param name="a_timeout">   [Long] The receive timeout in milliseconds. </param>
 ''' <param name="a_details">   [Out, String] details the failure. </param>
 ''' <returns>   [Boolean] True if the socket is connected. </returns>
-Public Function TryOpenConnection(ByVal a_host As String, ByVal a_port As Long, ByRef a_details As String) As Boolean
+Public Function TryOpenConnection(ByVal a_host As String, ByVal a_port As Long, _
+    ByVal a_timeout As Long, ByRef a_details As String) As Boolean
 
     This.Connected = False
     If VBA.vbNullString = a_host Then
@@ -320,6 +322,7 @@ Public Function TryOpenConnection(ByVal a_host As String, ByVal a_port As Long, 
             This.socketHost = a_host
             This.SocketAddress = a_host & ":" & VBA.CStr(a_port)
             This.Connected = True
+            Me.ReceiveTimeoutSetter a_timeout
             OnConnectionChanged This.Connected
         End If
         
@@ -632,16 +635,17 @@ Public Function ReceiveTerminatedMessage(ByRef a_buffer As String, ByVal a_maxLe
     
 End Function
 
-''' <summary>   Receives a message from the server until reaching the specified termination
-''' or reading the specified number of characters. </summary>
+''' <summary>   Receives a message from the server until reaching the specified termination. </summary>
+''' <remarks>   The <see cref="ReceiveTimeout"/> must be set long enough the exceed any instrument
+''' or controller delays. </remarks>
 ''' <param name="a_buffer">        [Out, String] the received message. </param>
 ''' <param name="a_details">       [Out, String] detasils the failure reason. </param>
 ''' <param name="a_trimEnd">       [Optional, Boolean, True] True to return the string without
 '''                                the termination. </param>
 ''' <param name="a_termination">   [Optional, String, Line Feed] The character that signifies the
 '''                                end of the stream. </param>
-''' <returns>   [Integer] If no error, the number of byte that were received.
-''' Otherwise, RECEIVE_ERROR.
+''' <returns>   [Integer] If no error, the number of bytes that were received.
+''' Otherwise, RECEIVE_ERROR (-1).
 ''' </returns>
 Public Function TryReceive(ByRef a_buffer As String, _
                            ByRef a_details As String, _
@@ -681,8 +685,11 @@ Public Function TryReceive(ByRef a_buffer As String, _
             p_done = True
         
         Else
-            p_currentLength = p_currentLength + p_count
-            p_builder.Append c
+            ' ignore a received CR character if trim end
+            If Not (a_trimEnd And c = VBA.vbCr) Then
+                p_currentLength = p_currentLength + p_count
+                p_builder.Append c
+            End If
         End If
     Loop
     
@@ -693,14 +700,13 @@ End Function
 
 ''' <summary>   Receives a message from the server until reaching the specified termination
 ''' or reading the specified number of characters. </summary>
-''' <param name="a_maxLength">   [Optional, 32767] The maximum number of bytes to read. </param>
-''' <param name="a_trimEnd">   [Optional, True] True to return the string without the termination. </param>
+''' <param name="a_maxLength">     [Optional, 32767] The maximum number of bytes to read. </param>
+''' <param name="a_trimEnd">       [Optional, True] True to return the string without the termination. </param>
 ''' <param name="a_termination">   [Optional, 10 ASCII] The character that signifies the end of the stream. </param>
 ''' <returns>   The received string. </returns>
 Public Function ReceiveRaw(Optional ByVal a_maxLength As Long = &H7FFFF, _
                            Optional ByVal a_trimEnd As Boolean = True, _
                            Optional ByVal a_termination As String = vbLf) As String
-
     Dim c As String * 1
     Dim p_count As Integer
     
@@ -727,8 +733,11 @@ Public Function ReceiveRaw(Optional ByVal a_maxLength As Long = &H7FFFF, _
             End If
             Exit Do
         Else
-            p_currentLength = p_currentLength + p_count
-            p_builder.Append c
+            ' ignore a received CR character if trim end
+            If Not (a_trimEnd And c = VBA.vbCr) Then
+                p_currentLength = p_currentLength + p_count
+                p_builder.Append c
+            End If
         End If
     Loop
     ReceiveRaw = p_builder.ToString
@@ -757,7 +766,7 @@ End Function
 ''' <summary>   Receives a message from the server. </summary>
 ''' <remarks>   Data is read until exhausted. </remarks>
 ''' <param name="a_bufferSize">   [Optional, 1024] The number of character to read on each trial. </param>
-''' <returns>   The received characters. </returns>
+''' <returns>   [String] The received characters. </returns>
 Public Function ReceiveString(Optional ByVal a_bufferSize As Integer = 1024) As String
     
     Dim p_buffer As String
@@ -776,7 +785,7 @@ End Function
 
 ''' <summary>   Sets the socket receive timeout. </summary>
 ''' <param name="a_timeoutMs">   The timeout interval in milliseconds. </param>
-Public Sub SetReceiveTimeout(ByVal a_timeoutMs As Long)
+Public Sub ReceiveTimeoutSetter(ByVal a_timeoutMs As Long)
 
     Dim p_result As Long
     
@@ -788,7 +797,7 @@ Public Sub SetReceiveTimeout(ByVal a_timeoutMs As Long)
     
         If p_result = wsock32.ws32_SOCKET_ERROR Then
             cc_isr_Core_IO.UserDefinedErrors.RaiseError cc_isr_Core_IO.UserDefinedErrors.SocketReceiveError, _
-                ThisWorkbook.VBProject.Name & "." & TypeName(Me) & ".SetReceiveTimeout", _
+                ThisWorkbook.VBProject.Name & "." & TypeName(Me) & ".ReceiveTimeoutSetter", _
                 " Failed setting receive timeout. winsock32.setsockopt(" & _
                 VBA.CStr(This.SocketId) & ", wsock32.ws32_SOL_SOCKET, wsock32.ws32_SO_RCVTIMEO, " & _
                 VBA.CStr(a_timeoutMs) & ", 4) returned " & _
@@ -801,6 +810,7 @@ Public Sub SetReceiveTimeout(ByVal a_timeoutMs As Long)
 End Sub
 
 ''' <summary>   Gets the socket receive timeout in milliseconds. </summary>
+''' <value>   [Long]. </value>
 Public Property Get ReceiveTimeout() As Long
     
     ReceiveTimeout = This.ReceiveTimeout
