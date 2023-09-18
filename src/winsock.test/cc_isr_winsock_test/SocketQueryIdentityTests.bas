@@ -18,6 +18,7 @@ Private Type this_
     Socket As IPv4StreamSocket
     DelayStopper As cc_isr_Core_IO.Stopwatch
     ErrTracer As IErrTracer
+    IdentityCompany As String
     TestCount As Integer
     RunCount As Integer
     PassedCount As Integer
@@ -36,6 +37,8 @@ Public Function RunTest(ByVal a_testNumber As Integer) As cc_isr_Test_Fx.Assert
             Set p_outcome = TestSocketShouldRawQueryIdentity
         Case 2
             Set p_outcome = TestSocketShouldBufferQueryIdentity
+        Case 3
+            Set p_outcome = TestSocketShouldBytesQueryIdentity
         Case Else
     End Select
     Set RunTest = p_outcome
@@ -45,7 +48,7 @@ End Function
 ''' <summary>   Runs a single test. </summary>
 Public Sub RunOneTest()
     BeforeAll
-    RunTest 1
+    RunTest 3
     AfterAll
 End Sub
 
@@ -57,7 +60,7 @@ Public Sub RunAllTests()
     This.PassedCount = 0
     This.FailedCount = 0
     This.InconclusiveCount = 0
-    This.TestCount = 2
+    This.TestCount = 3
     Dim p_testNumber As Integer
     For p_testNumber = 1 To This.TestCount
         Set p_outcome = RunTest(p_testNumber)
@@ -96,6 +99,7 @@ Public Sub BeforeAll()
     This.Port = 1234
     This.PrologixPort = 1234
     This.SocketReceiveTimeout = 100
+    This.IdentityCompany = "KEITHLEY INSTRUMENTS INC."
     
     Set This.ErrTracer = New ErrTracer
     
@@ -390,7 +394,8 @@ err_Handler:
 
 End Sub
 
-''' <summary>   Unit test. Asserts that the stream socket should query a device identity. </summary>
+''' <summary>   Unit test. Asserts that the stream socket should query a device identity
+''' using the <see cref="IPV4StreaMSocket"/> <see cref="ReceiveRaw"/> method. </summary>
 ''' <returns>   [<see cref="cc_isr_Test_Fx.Assert"/>] instance where
 ''' <see cref="Assert.AssertSuccessful"/> is <c>True</c> if the test passed. </returns>
 Public Function TestSocketShouldRawQueryIdentity() As cc_isr_Test_Fx.Assert
@@ -414,6 +419,10 @@ Public Function TestSocketShouldRawQueryIdentity() As cc_isr_Test_Fx.Assert
             
         p_identity = This.Socket.ReceiveRaw()
 
+        Set p_outcome = cc_isr_Test_Fx.Assert.IsTrue( _
+            1 = VBA.InStr(1, p_identity, This.IdentityCompany, VBA.VbCompareMethod.vbTextCompare), _
+            "Identity '" & p_identity & " should start with '" & This.IdentityCompany & "'.")
+        
     End If
 
 ' . . . . . . . . . . . . . . . . . . . . . . . . . . .
@@ -444,7 +453,8 @@ err_Handler:
     
 End Function
 
-''' <summary>   Unit test. Asserts that the stream socket should query a device identity. </summary>
+''' <summary>   Unit test. Asserts that the stream socket should query a device identity
+''' using the <see cref="IPV4StreaMSocket"/> <see cref="ReceiveTerminatedMessage"/> method. </summary>
 ''' <returns>   [<see cref="cc_isr_Test_Fx.Assert"/>] instance where
 ''' <see cref="Assert.AssertSuccessful"/> is <c>True</c> if the test passed. </returns>
 Public Function TestSocketShouldBufferQueryIdentity() As cc_isr_Test_Fx.Assert
@@ -473,6 +483,10 @@ Public Function TestSocketShouldBufferQueryIdentity() As cc_isr_Test_Fx.Assert
         p_readCount = This.Socket.ReceiveTerminatedMessage(p_buffer, p_maximumLength, VBA.vbLf)
     
         p_identity = p_buffer
+
+        Set p_outcome = cc_isr_Test_Fx.Assert.IsTrue( _
+            1 = VBA.InStr(1, p_identity, This.IdentityCompany, VBA.VbCompareMethod.vbTextCompare), _
+            "Identity '" & p_identity & " should start with '" & This.IdentityCompany & "'.")
 
     End If
 
@@ -503,6 +517,74 @@ err_Handler:
     GoTo exit_Handler
     
 End Function
+
+
+''' <summary>   Unit test. Asserts that the stream socket should query a device identity
+''' using the <see cref="IPV4StreaMSocket"/> <see cref="ReceiveBytes"/> method. </summary>
+''' <returns>   [<see cref="cc_isr_Test_Fx.Assert"/>] instance where
+''' <see cref="Assert.AssertSuccessful"/> is <c>True</c> if the test passed. </returns>
+Public Function TestSocketShouldBytesQueryIdentity() As cc_isr_Test_Fx.Assert
+
+    Const p_procedureName As String = "TestSocketShouldBytesQueryIdentity"
+    
+    ' Trap errors to the error handler
+    On Error GoTo err_Handler
+    
+    Dim p_outcome As cc_isr_Test_Fx.Assert: Set p_outcome = This.BeforeEachAssert
+    
+    Dim p_command As String: p_command = "*IDN?"
+    Dim p_sentCount As Integer
+    Dim p_identity As String
+    Dim p_maximumLength As Integer: p_maximumLength = 1024
+    Dim p_buffer As String
+    Dim p_readCount As Integer
+    
+    If p_outcome.AssertSuccessful Then
+            
+        ' send the command
+        p_sentCount = This.Socket.SendMessage(p_command & VBA.vbLf)
+        This.DelayStopper.Wait 5
+    
+        ' receive the reading
+        p_buffer = This.Socket.ReceiveBytes(p_maximumLength)
+        p_readCount = VBA.Len(p_buffer)
+    
+        p_identity = p_buffer
+
+        Set p_outcome = cc_isr_Test_Fx.Assert.IsTrue( _
+            1 = VBA.InStr(1, p_identity, This.IdentityCompany, VBA.VbCompareMethod.vbTextCompare), _
+            "Identity '" & p_identity & " should start with '" & This.IdentityCompany & "'.")
+
+    End If
+
+' . . . . . . . . . . . . . . . . . . . . . . . . . . .
+exit_Handler:
+
+    If p_outcome.AssertSuccessful Then _
+        Set p_outcome = This.ErrTracer.AssertLeftoverErrors
+    
+    Debug.Print p_outcome.BuildReport("TestSocketShouldBytesQueryIdentity")
+    
+    Set TestSocketShouldBytesQueryIdentity = p_outcome
+    
+    On Error GoTo 0
+    Exit Function
+
+' . . . . . . . . . . . . . . . . . . . . . . . . . . .
+err_Handler:
+  
+    ' append the error source
+    cc_isr_Core_IO.ErrorMessageBuilder.AppendErrSource p_procedureName, This.Name, ThisWorkbook
+    
+    ' enqueue the error or append its source to the last error.
+    cc_isr_Core_IO.UserDefinedErrors.EnqueueErrorObject
+    
+    ' exit this procedure (not an active handler)
+    On Error Resume Next
+    GoTo exit_Handler
+    
+End Function
+
 
 
 

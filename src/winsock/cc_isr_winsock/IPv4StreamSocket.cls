@@ -639,7 +639,7 @@ End Function
 ''' <remarks>   The <see cref="ReceiveTimeout"/> must be set long enough the exceed any instrument
 ''' or controller delays. </remarks>
 ''' <param name="a_buffer">        [Out, String] the received message. </param>
-''' <param name="a_details">       [Out, String] detasils the failure reason. </param>
+''' <param name="a_details">       [Out, String] details the failure reason. </param>
 ''' <param name="a_trimEnd">       [Optional, Boolean, True] True to return the string without
 '''                                the termination. </param>
 ''' <param name="a_termination">   [Optional, String, Line Feed] The character that signifies the
@@ -701,7 +701,7 @@ End Function
 ''' <summary>   Receives a message from the server until reaching the specified termination
 ''' or reading the specified number of characters. </summary>
 ''' <param name="a_maxLength">     [Optional, 32767] The maximum number of bytes to read. </param>
-''' <param name="a_trimEnd">       [Optional, True] True to return the string without the termination. </param>
+''' <param name="a_trimEnd">       [Optional, Boolean, True] True to return the string without the termination. </param>
 ''' <param name="a_termination">   [Optional, 10 ASCII] The character that signifies the end of the stream. </param>
 ''' <returns>   The received string. </returns>
 Public Function ReceiveRaw(Optional ByVal a_maxLength As Long = &H7FFFF, _
@@ -745,9 +745,13 @@ Public Function ReceiveRaw(Optional ByVal a_maxLength As Long = &H7FFFF, _
 End Function
 
 ''' <summary>   Receives a message from the server. </summary>
-''' <param name="a_maxLength">   The maximum number of maxLength to read. </param>
-''' <returns>   The received characters. </returns>
-Public Function ReceiveBytes(ByVal a_maxLength As Long) As String
+''' <param name="a_maxLength">     [Optiona, Long, 32767] The maximum number of characters to read. </param>
+''' <param name="a_trimEnd">       [Optional, Boolean, True] True to return the string without the termination. </param>
+''' <param name="a_termination">   [Optional, 10 ASCII] The character that signifies the end of the stream. </param>
+''' <returns>   [String]. </returns>
+Public Function ReceiveBytes(Optional ByVal a_maxLength As Long = 32767, _
+    Optional ByVal a_trimEnd As Boolean = True, _
+    Optional ByVal a_termination As String = VBA.vbLf) As String
     
     Dim p_buffer As String: p_buffer = StringExtensions.Repeat(VBA.Chr$(0), a_maxLength)
     
@@ -756,30 +760,34 @@ Public Function ReceiveBytes(ByVal a_maxLength As Long) As String
     p_actualLength = recv_(This.SocketId, p_buffer, a_maxLength, 0)
     
     If p_actualLength > 0 Then
-        ReceiveBytes = StringExtensions.Substring(p_buffer, 0, p_actualLength)
+        p_buffer = StringExtensions.Substring(p_buffer, 0, p_actualLength)
+        If a_trimEnd Then
+            p_buffer = cc_isr_Core.StringExtensions.TrimEnd(p_buffer, a_termination)
+        End If
+        ReceiveBytes = p_buffer
     Else
         ReceiveBytes = vbNullString
     End If
     
 End Function
 
-''' <summary>   Receives a message from the server. </summary>
+''' <summary>   Receives a message from the server until nothign to receive as indicated by a timeout. </summary>
 ''' <remarks>   Data is read until exhausted. </remarks>
 ''' <param name="a_bufferSize">   [Optional, 1024] The number of character to read on each trial. </param>
 ''' <returns>   [String] The received characters. </returns>
-Public Function ReceiveString(Optional ByVal a_bufferSize As Integer = 1024) As String
+Public Function ReceiveUntilTimeout(Optional ByVal a_bufferSize As Integer = 1024) As String
     
     Dim p_buffer As String
     Dim p_builder As cc_isr_Core.StringBuilder
     Set p_builder = cc_isr_Core.Factory.NewStringBuilder.Initialize()
     
     Do
-        p_buffer = Trim(Me.ReceiveBytes(a_bufferSize))
+        p_buffer = Trim(Me.ReceiveBytes(a_bufferSize, False))
         If Len(p_buffer) > 0 Then p_builder.Append p_buffer
         
     Loop While Len(p_buffer) > 0
     
-    ReceiveString = p_builder.ToString()
+    ReceiveUntilTimeout = p_builder.ToString()
     
 End Function
 

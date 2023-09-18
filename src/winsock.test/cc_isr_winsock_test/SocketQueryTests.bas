@@ -20,6 +20,7 @@ Private Type this_
     AssertTalkOnWrite As Boolean
     DelayStopper As cc_isr_Core_IO.Stopwatch
     ErrTracer As IErrTracer
+    IdentityCompany As String
     TestCount As Integer
     RunCount As Integer
     PassedCount As Integer
@@ -99,7 +100,11 @@ Public Sub BeforeAll()
     This.PrologixPort = 1234
     This.ReceiveTimeout = 3000
     This.ReadAfterWriteDelay = 5
+    
+    ' set to false when testing with serial poll
     This.AssertTalkOnWrite = False
+    
+    This.IdentityCompany = "KEITHLEY INSTRUMENTS INC."
     
     Set This.ErrTracer = New ErrTracer
     
@@ -237,10 +242,11 @@ Public Sub BeforeEach()
         
         End If
         
-        If 0 > TryReceive(p_reply, p_details) Then
-            Set p_outcome = cc_isr_Test_Fx.Assert.Fail(p_details)
+        If p_outcome.AssertSuccessful Then
+            If 0 > TryReceive(p_reply, p_details) Then
+                Set p_outcome = cc_isr_Test_Fx.Assert.Fail(p_details)
+            End If
         End If
-        This.DelayStopper.Wait This.ReadAfterWriteDelay
         
         If p_outcome.AssertSuccessful And This.Port = This.PrologixPort Then
         
@@ -278,6 +284,7 @@ exit_Handler:
     Set This.BeforeEachAssert = p_outcome
 
     On Error GoTo 0
+    
     Exit Sub
 
 ' . . . . . . . . . . . . . . . . . . . . . . . . . . .
@@ -322,6 +329,16 @@ Public Sub AfterEach()
         p_command = "*CLS;*WAI;*OPC?"
         p_sentCount = This.Socket.SendMessage(p_command & VBA.vbLf)
         This.DelayStopper.Wait This.ReadAfterWriteDelay
+        
+        If p_outcome.AssertSuccessful And This.Port = This.PrologixPort Then
+        
+            Dim p_serialPollOutcome As cc_isr_Test_Fx.Assert
+            Set p_serialPollOutcome = AssertSerialPollShouldValidate(16, 16)
+            If Not p_serialPollOutcome.AssertSuccessful Then
+                Debug.Print p_serialPollOutcome.AssertMessage
+            End If
+        
+        End If
         
         Dim p_details As String: p_details = VBA.vbNullString
         If 0 > TryReceive(p_reply, p_details) Then
@@ -455,33 +472,15 @@ End Function
 
 Public Function TryReceive(ByRef a_reply As String, ByRef a_details As String) As Integer
 
-    Dim p_messageAvailable As Boolean
-    Dim p_MAV As Integer: p_MAV = 16
-    Dim p_statusByte As Integer
+    Dim p_command As String
     If Not This.AssertTalkOnWrite Then
-        
-        ' wait for serial poll
-        p_messageAvailable = AwaitMessageAvailable(p_MAV, This.ReceiveTimeout, p_statusByte, a_details)
-    
+        p_command = "++read eoi"
+        Dim p_sentCount As Integer
+        p_sentCount = This.Socket.SendMessage(p_command & VBA.vbLf)
+        This.DelayStopper.Wait This.ReadAfterWriteDelay
     End If
     
-    Debug.Print "    status byte: " & VBA.CStr(p_statusByte)
-    
-    If p_messageAvailable Then
-    
-        Dim p_command As String
-        If Not This.AssertTalkOnWrite Then
-            p_command = "++read_eoi"
-            Dim p_sentCount As Integer
-            p_sentCount = This.Socket.SendMessage(p_command & VBA.vbLf)
-            This.DelayStopper.Wait This.ReadAfterWriteDelay
-        End If
-        
-        TryReceive = This.Socket.TryReceive(a_reply, a_details)
-    
-    Else
-        TryReceive = -1
-    End If
+    TryReceive = This.Socket.TryReceive(a_reply, a_details)
 
 End Function
 
@@ -491,7 +490,17 @@ Public Function TryQuery(ByVal a_command As String, ByRef a_reply As String, ByR
     Dim p_sentCount As Integer
     p_sentCount = This.Socket.SendMessage(a_command & VBA.vbLf)
     This.DelayStopper.Wait This.ReadAfterWriteDelay
-
+    
+    If This.Port = This.PrologixPort Then
+    
+        Dim p_serialPollOutcome As cc_isr_Test_Fx.Assert
+        Set p_serialPollOutcome = AssertSerialPollShouldValidate(16, 16)
+        If Not p_serialPollOutcome.AssertSuccessful Then
+            Debug.Print p_serialPollOutcome.AssertMessage
+        End If
+    
+    End If
+    
     TryQuery = TryReceive(a_reply, a_details)
 
 End Function
@@ -507,22 +516,45 @@ Public Function DelimitInteger(ByVal a_value As Integer, _
     DelimitInteger = a_value
 End Function
 
-''' <summary>   Asserts a valid serial poll. </summary>
-Private Function AssertSerialPollShouldValidate(ByVal a_value As Integer, ByVal a_bitValue As Integer) As cc_isr_Test_Fx.Assert
-    Set AssertSerialPollShouldValidate = cc_isr_Test_Fx.Assert.Pass()
-    If Not This.AssertTalkOnWrite Then
+''' summary>   Asserts that the status byte bits value are correct. </summary>
+''' <param name="a_bitsStatus"/>   [Integer] The expected status of the specified status bits. </param>
+''' <param name="a_statusBits"/>   [Integer] The expected status bits. </param>
+Private Function AssertSerialPollShouldValidate(ByVal a_bitsStatus As Integer, ByVal a_statusBits As Integer) As cc_isr_Test_Fx.Assert
+    
+    Dim p_outcome As cc_isr_Test_Fx.Assert
+    If This.AssertTalkOnWrite Then
+        Set p_outcome = cc_isr_Test_Fx.Assert.Pass()
+    Else
+        Dim p_details As String
+        Dim p_polled As Boolean
         Dim p_elapsed As Double
         Dim p_statusByte As Integer
         Dim p_stopper As cc_isr_Core_IO.Stopwatch
         Set p_stopper = cc_isr_Core_IO.Factory.NewStopwatch()
         p_stopper.Restart
-        Set AssertSerialPollShouldValidate = AssertSerialPollShouldValidate_(a_value, a_bitValue, p_statusByte)
+        p_polled = AwaitStatusBits(a_bitsStatus, a_statusBits, 3000, p_statusByte, p_details)
         p_elapsed = p_stopper.ElapsedMilliseconds
+        If p_statusByte < 0 Then
+            Set p_outcome = cc_isr_Test_Fx.Assert.Fail(p_details)
+        ElseIf p_polled Then
+            Set p_outcome = cc_isr_Test_Fx.Assert.Pass()
+        Else
+            Set p_outcome = cc_isr_Test_Fx.Assert.Fail("    Status byte '" & _
+                VBA.CStr(p_statusByte) & "' bits '" & VBA.CStr(a_statusBits) & _
+                "' not matching the expected bits '" & VBA.CStr(a_bitsStatus) & "'value.")
+        End If
         Debug.Print "    Prologix Serial Poll is " & VBA.CStr(p_statusByte) & _
-            " in " & Format(p_elapsed, "0.0")
+            " in " & Format(p_elapsed, "0.0") & "ms."
     End If
+    Set AssertSerialPollShouldValidate = p_outcome
+
 End Function
 
+''' summary>   Reads the status byte of the current GPIB instrument. </summary>
+''' <param name="a_details">       [Out, String] details the failure reason. </param>
+''' <returns>   [Integer] The status byte or RECEIVE_ERROR (-1) if failed receiving a reading or
+''' failed parsing the reading to an integer.
+''' </returns>
 Public Function SerialPoll(ByRef a_details As String) As Integer
     
     Dim p_command As String
@@ -545,6 +577,33 @@ Public Function SerialPoll(ByRef a_details As String) As Integer
     End If
     SerialPoll = p_statusByte
 
+End Function
+
+''' summary>   Waits for the expected status bits or timeout. </summary>
+''' <param name="a_bitsStatus"/>   [Integer] The expected status of the specified status bits. </param>
+''' <param name="a_statusBits"/>   [Integer] The expected status bits. </param>
+''' <param name="a_timeout"/>      [Long] The timeout in milliseconds. </param>
+''' <param name="a_statusByte"/>   [Out, Integer] The last received status byte.
+'''                                Negative if serial poll failed. </param>
+''' <param name="a_details">       [Out, String] details the failure reason. </param>
+''' <returns>   [Boolean] True if the status byte has the expected bits value. </returns>
+Public Function AwaitStatusBits(ByVal a_bitsStatus As Integer, ByVal a_statusBits As Integer, _
+    ByVal a_timeout As Long, ByRef a_statusByte As Integer, ByRef a_details As String) As Boolean
+
+    Dim p_gotIt As Boolean
+    Dim p_stopper As cc_isr_Core_IO.Stopwatch
+    Set p_stopper = cc_isr_Core_IO.Factory.NewStopwatch()
+    p_stopper.Restart
+    
+    Do
+        DoEvents
+        ' read the status bit.
+        a_statusByte = SerialPoll(a_details)
+        p_gotIt = (a_statusByte >= 0) And (a_bitsStatus = (a_statusBits And a_statusByte))
+    Loop Until p_gotIt Or (a_statusByte < 0) Or (p_stopper.ElapsedMilliseconds > a_timeout)
+    
+    AwaitStatusBits = p_gotIt
+    
 End Function
 
 Public Function IsMessageAvailable(ByVal a_MAV As Integer, ByRef a_statusByte As Integer, ByRef a_details As String) As Boolean
@@ -620,7 +679,7 @@ Private Function AssertShouldValidateQuery(ByVal a_command As String, ByVal a_va
     Set AssertShouldValidateQuery = AssertShouldValidateQuery_(a_command, a_value)
     p_elapsed = p_stopper.ElapsedMilliseconds
     Debug.Print "    Prologix '" & a_command & "' set to " & VBA.CStr(a_value) & _
-        " in " & Format(p_elapsed, "0.0")
+        " in " & Format(p_elapsed, "0.0") & "ms."
 End Function
 
 Private Function AssertShouldValidateQuery_(ByVal a_command As String, ByVal a_value As String) As cc_isr_Test_Fx.Assert
@@ -665,6 +724,21 @@ Private Function AssertShouldValidateQuery_(ByVal a_command As String, ByVal a_v
 End Function
 
 ''' <summary>   Unit test. Asserts that the stream socket should query a device identity. </summary>
+''' <remarks>
+''' <code>
+''' Prologix '++eos' set to 3 in 15.6ms.
+''' Prologix '++eoi' set to 1 in 15.5ms.
+''' Prologix '++auto' set to 0 in 15.5ms.
+''' Prologix '++read_tmo_ms' set to 3000 in 15.6ms.
+''' Prologix Serial Poll is 16 in 10.8ms.
+''' Prologix Serial Poll is 0 in 8.5ms.
+''' Prologix Serial Poll is 16 in 10.7ms.
+''' Prologix Serial Poll is 0 in 5.3ms.
+''' TestSocketShouldConnect passed.
+''' Prologix Serial Poll is 16 in 10.7ms.
+''' Prologix '++auto' set
+''' </code>
+''' </remarks>
 ''' <returns>   [<see cref="cc_isr_Test_Fx.Assert"/>] instance where
 ''' <see cref="Assert.AssertSuccessful"/> is <c>True</c> if the test passed. </returns>
 Public Function TestSocketShouldConnect() As cc_isr_Test_Fx.Assert
@@ -696,7 +770,6 @@ Public Function TestSocketShouldConnect() As cc_isr_Test_Fx.Assert
             End If
         
         End If
-        
         
         Dim p_details As String: p_details = VBA.vbNullString
         If 0 > TryReceive(p_reply, p_details) Then

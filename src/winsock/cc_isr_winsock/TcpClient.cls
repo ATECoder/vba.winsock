@@ -90,28 +90,32 @@ Public Function SendMessage(ByVal a_message As String) As Long
 End Function
 
 ''' <summary>   Receives a message from the server. </summary>
-''' <param name="a_maxLength">   [Long] The maximum number of characters to read. </param>
-''' <returns>   [String] The received characters. </returns>
-Public Function ReceiveBytes(ByVal a_maxLength As Long) As String
+''' <param name="a_maxLength">     [Optiona, Long, 32767] The maximum number of characters to read. </param>
+''' <param name="a_trimEnd">       [Optional, Boolean, True] True to return the string without the termination. </param>
+''' <param name="a_termination">   [Optional, 10 ASCII] The character that signifies the end of the stream. </param>
+''' <returns>   [String]. </returns>
+Public Function ReceiveBytes(Optional ByVal a_maxLength As Long = 32767, _
+    Optional ByVal a_trimEnd As Boolean = True, _
+    Optional ByVal a_termination As String = VBA.vbLf) As String
     
     ReceiveBytes = This.TcpClientSocket.ReceiveBytes(a_maxLength)
 
 End Function
 
-''' <summary>   Receives a message from the server. </summary>
+''' <summary>   Receives a message from the server until timeout. </summary>
 ''' <remarks>   Data is read until exhausted. </remarks>
 ''' <param name="a_bufferSize">   [Optional, Integer, 1024] The number of character to read on each trial. </param>
 ''' <returns>   The received characters. </returns>
-Public Function ReceiveString(Optional ByVal a_bufferSize As Integer = 1024) As String
+Public Function ReceiveUntilTimeout(Optional ByVal a_bufferSize As Integer = 1024) As String
     
-    ReceiveString = This.TcpClientSocket.ReceiveString(a_bufferSize)
+    ReceiveUntilTimeout = This.TcpClientSocket.ReceiveUntilTimeout(a_bufferSize)
 
 End Function
 
 ''' <summary>   Receives a message from the server until reaching the specified termination
 ''' or reading the specified number of characters. </summary>
 ''' <param name="a_maxLength">     [Optional, 32767] The maximum number of bytes to read. </param>
-''' <param name="a_trimEnd">       [Optional, True] True to return the string without the termination. </param>
+''' <param name="a_trimEnd">       [Optional, Boolean, True] True to return the string without the termination. </param>
 ''' <param name="a_termination">   [Optional, 10 ASCII] The character the signifies the end of the stream. </param>
 ''' <returns>   The received string. </returns>
 Public Function ReceiveRaw(Optional ByVal a_maxLength As Long = &H7FFF, _
@@ -125,7 +129,7 @@ End Function
 
 ''' <summary>   Sends a query message and reads back from the server until reaching the specified
 ''' termination or reading the specified number of characters. </summary>
-''' <param name="a_message">       [String] The message. </param>
+''' <param name="a_message">       [String] The query message. </param>
 ''' <param name="a_maxLength">     [Optional, Long, 32767] The maximum number of bytes to read. </param>
 ''' <param name="a_trimEnd">       [Optional, Boolean, True] True to return the string without the termination. </param>
 ''' <param name="a_termination">   [Optional, String, 10 ASCII] The character the signifies the end of the stream. </param>
@@ -142,6 +146,52 @@ Public Function QueryRaw(ByVal a_message As String, _
     End If
   
 End Function
+
+''' <summary>   Receives a message from the server until reaching the specified termination. </summary>
+''' <remarks>   The <see cref="ReceiveTimeout"/> must be set long enough the exceed any instrument
+''' or controller delays. </remarks>
+''' <param name="a_buffer">        [Out, String] the received message. </param>
+''' <param name="a_details">       [Out, String] detasils the failure reason. </param>
+''' <param name="a_trimEnd">       [Optional, Boolean, True] True to return the string without
+'''                                the termination. </param>
+''' <param name="a_termination">   [Optional, String, Line Feed] The character that signifies the
+'''                                end of the stream. </param>
+''' <returns>   [Integer] If no error, the number of bytes that were received.
+''' Otherwise, RECEIVE_ERROR (-1).
+''' </returns>
+Public Function TryReceive(ByRef a_buffer As String, _
+                           ByRef a_details As String, _
+                           Optional ByVal a_trimEnd As Boolean = True, _
+                           Optional ByVal a_termination As String = vbLf) As Long
+    TryReceive = This.TcpClientSocket.TryReceive(a_buffer, a_details, a_trimEnd, a_termination)
+                        
+End Function
+
+''' <summary>   Sends a query message and reads back from the server until reaching the specified
+''' termination. </summary>
+''' <param name="a_message">       [String] The query message. </param>
+''' <param name="a_buffer">        [Out, String] the received message. </param>
+''' <param name="a_details">       [Out, String] detasils the failure reason. </param>
+''' <param name="a_trimEnd">       [Optional, Boolean, True] True to return the string without
+'''                                the termination. </param>
+''' <param name="a_termination">   [Optional, String, Line Feed] The character that signifies the
+'''                                end of the stream. </param>
+''' <returns>   [Integer] If no error, the number of bytes that were received.
+''' Otherwise, RECEIVE_ERROR (-1).
+''' </returns>
+Public Function TryQuery(ByVal a_message As String, _
+                         ByRef a_buffer As String, _
+                         ByRef a_details As String, _
+                         Optional ByVal a_trimEnd As Boolean = True, _
+                         Optional ByVal a_termination As String = vbLf) As Long
+    If Me.SendMessage(a_message) > 0 Then
+        TryQuery = This.TcpClientSocket.TryReceive(a_buffer, a_details, a_trimEnd, a_termination)
+    Else
+        TryQuery = vbNullString
+    End If
+  
+End Function
+
 
 ' + + + + + + + + + + + + + + + + + + + + + + + + + + +
 '

@@ -297,33 +297,33 @@ Public Function TestInitializeAndDispose() As cc_isr_Test_Fx.Assert
     Dim p_outcome As cc_isr_Test_Fx.Assert: Set p_outcome = This.BeforeEachAssert
     
     ' this is required to initialize Winsock.  It will only ran once.
-    Winsock.Initialize
+    winsock.Initialize
     
-    Set p_outcome = cc_isr_Test_Fx.Assert.IsTrue(Winsock.Initiated, "Winsock should be initiated when a socket is created")
+    Set p_outcome = cc_isr_Test_Fx.Assert.IsTrue(winsock.Initiated, "Winsock should be initiated when a socket is created")
     
     If p_outcome.AssertSuccessful Then
-        Set p_outcome = cc_isr_Test_Fx.Assert.IsFalse(Winsock.Disposed, "Winsock should not be disposed when a socket is created")
+        Set p_outcome = cc_isr_Test_Fx.Assert.IsFalse(winsock.Disposed, "Winsock should not be disposed when a socket is created")
     End If
     
     If p_outcome.AssertSuccessful Then
-        Set p_outcome = cc_isr_Test_Fx.Assert.AreEqual(Winsock.SocketCount, 0, _
-            "Winsock socket count should be 0 as no sockets are registered but is " & Str$(Winsock.SocketCount))
+        Set p_outcome = cc_isr_Test_Fx.Assert.AreEqual(winsock.SocketCount, 0, _
+            "Winsock socket count should be 0 as no sockets are registered but is " & Str$(winsock.SocketCount))
     End If
 
     ' test disposing of Winsock.
-    Winsock.Dispose
+    winsock.Dispose
     
     If p_outcome.AssertSuccessful Then
-        Set p_outcome = cc_isr_Test_Fx.Assert.IsFalse(Winsock.Initiated, _
+        Set p_outcome = cc_isr_Test_Fx.Assert.IsFalse(winsock.Initiated, _
             "Winsock should no longer be initiated after the last socket was set to nothing")
     End If
     
     If p_outcome.AssertSuccessful Then
-        Set p_outcome = cc_isr_Test_Fx.Assert.IsTrue(Winsock.Disposed, _
+        Set p_outcome = cc_isr_Test_Fx.Assert.IsTrue(winsock.Disposed, _
             "Winsock should be disposed after the last socket was set to nothing")
     End If
     
-    Winsock.Dispose
+    winsock.Dispose
     
 ' . . . . . . . . . . . . . . . . . . . . . . . . . . .
 exit_Handler:
@@ -366,7 +366,7 @@ Public Function TestGettingLastErrorDescription() As cc_isr_Test_Fx.Assert
     
     Dim p_errorNumber As Long: p_errorNumber = 5
     Dim p_expected As String: p_expected = "Access is denied."
-    Dim p_actual As String: p_actual = Winsock.LastErrorDescription(p_errorNumber)
+    Dim p_actual As String: p_actual = winsock.LastErrorDescription(p_errorNumber)
     
     Set p_outcome = cc_isr_Test_Fx.Assert.AreEqual(p_expected, p_actual, _
             "Winsock should get the correct error description for error number " & CStr(p_errorNumber))
