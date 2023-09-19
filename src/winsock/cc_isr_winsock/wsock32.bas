@@ -62,15 +62,15 @@ Public Type ws32_IN_ADDR
 End Type
 
 ''' <summary>   Sets the socket IPv4 address expressed in network byte order. </summary>
-Public Type ws32_SocketAddress
+Public Type ws32_Address
     sa_family As Integer
     sa_data As String * 14
 End Type
 
-Public Const ws32_SocketAddressLen = 16
+Public Const ws32_AddressLen = 16
 
 ''' <summary>   Sets the socket IPv4 address expressed in network byte order. </summary>
-Public Type ws32_SocketAddress_in
+Public Type ws32_Address_in
     sin_family As Integer     ' Address family of the socket, such as ws32_AF_INET.
     sin_port As Integer       ' sock address port number, e.g.,  htons(5150);
     sin_addr As ws32_IN_ADDR  ' the internet address as a long integer type.

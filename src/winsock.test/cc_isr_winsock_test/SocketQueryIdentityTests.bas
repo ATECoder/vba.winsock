@@ -14,7 +14,7 @@ Private Type this_
     Host As String
     Port As Long
     PrologixPort As Long
-    SocketReceiveTimeout As Integer
+    ReceiveTimeout As Integer
     Socket As IPv4StreamSocket
     DelayStopper As cc_isr_Core_IO.Stopwatch
     ErrTracer As IErrTracer
@@ -98,7 +98,7 @@ Public Sub BeforeAll()
     This.Host = "192.168.0.252"
     This.Port = 1234
     This.PrologixPort = 1234
-    This.SocketReceiveTimeout = 100
+    This.ReceiveTimeout = 100
     This.IdentityCompany = "KEITHLEY INSTRUMENTS INC."
     
     Set This.ErrTracer = New ErrTracer

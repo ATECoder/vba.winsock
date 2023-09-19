@@ -17,12 +17,13 @@ Implements IConnectable
 
 Private Type this_
     TcpClientSocket As IPv4StreamSocket
+    Connected As Boolean
 End Type
 
 Private This As this_
 
-''' <summary>   The <see cref="TcpClientSocket"/> event handler. </summary>
-Private m_tcpClientSocket As IPv4StreamSocket
+Private WithEvents m_tcpClientSocket As IPv4StreamSocket
+Attribute m_tcpClientSocket.VB_VarHelpID = -1
 
 ''' <summary>   The event that is raised upon change of connection. </summary>
 ''' <param name="a_eventArgs">   [<see cref="cc_isr_Winsock.ConnectionChangedEventArgs"/>] event args. </param>
@@ -61,16 +62,15 @@ Public Function Accept(ByVal a_connectedSocket As IPv4StreamSocket) As TcpClient
     If Me.Connected Then
         cc_isr_Core_IO.UserDefinedErrors.RaiseError cc_isr_Core_IO.UserDefinedErrors.InvalidOperationError, _
             ThisWorkbook.VBProject.Name & "." & TypeName(Me) & ".Accept", _
-            " This Tcp Client is already connected to " & This.TcpClientSocket.SocketAddress & _
+            " This Tcp Client is already connected to " & This.TcpClientSocket.Address & _
             " A new Tcp Client must be used to accept a connected socket at " & _
-            a_connectedSocket.SocketAddress & "."
+            a_connectedSocket.Address & "."
     End If
     
     ' remove this socket
     If Not This.TcpClientSocket Is Nothing Then Set This.TcpClientSocket = Nothing
     
     Set This.TcpClientSocket = a_connectedSocket
-    Set m_tcpClientSocket = This.TcpClientSocket
     
     Set Accept = Me
     
@@ -199,6 +199,21 @@ End Function
 '
 ' + + + + + + + + + + + + + + + + + + + + + + + + + + +
 
+''' <summary>   Gets the address consisting of the IPv4 dotted-decimal host
+''' and the port the server is listening too. </summary>
+''' <value>   [String] The IPv4 dotted-decimal host address and port delimited with a colon. </value>
+Public Property Get Address() As String
+    Address = IConnectable_Address
+End Property
+
+Private Property Get IConnectable_Address() As String
+    If This.TcpClientSocket Is Nothing Then
+        IConnectable_Address = VBA.vbNullString
+    Else
+        IConnectable_Address = This.TcpClientSocket.Address
+    End If
+End Property
+
 ''' <summary>   Returns true if a connection can be made. </summary>
 ''' <value>   [Boolean] True if a connection can be made. </value>
 Public Property Get CanConnect() As Boolean
@@ -211,7 +226,7 @@ Private Property Get IConnectable_CanConnect() As Boolean
     If This.TcpClientSocket Is Nothing Then
         IConnectable_CanConnect = False
     Else
-        IConnectable_CanConnect = Not This.TcpClientSocket.Connected
+        IConnectable_CanConnect = This.TcpClientSocket.CanConnect
     End If
 End Property
 
@@ -228,7 +243,7 @@ Private Property Get IConnectable_Connected() As Boolean
     If This.TcpClientSocket Is Nothing Then
         IConnectable_Connected = False
     Else
-        IConnectable_Connected = This.TcpClientSocket.Connected
+        IConnectable_Connected = This.TcpClientSocket.Connected And This.Connected
     End If
 
 End Property
@@ -247,57 +262,83 @@ Private Sub IConnectable_Dispose()
     
     If Not p_disconnected Then p_disconnected = IConnectable_CloseConnection()
     
-    Set m_tcpClientSocket = Nothing
     Set This.TcpClientSocket = Nothing
     
     On Error GoTo 0
 
 End Sub
 
-''' <summary>   Opens a socket connection and sets and returns true if connected. </summary>
-''' <param name="a_host">        [String] An IPv4 dotted-decimal host address. </param>
-''' <param name="a_port">        [Long] The port that the server is listening on. </param>
-''' <param name="a_timeoutMs">   [Optional, Long, 500] The receive timeout in milliseconds. </param>
-''' <returns>   [Boolean] True if the socket is connected. </returns>
-Public Function OpenConnection(ByVal a_host As String, ByVal a_port As Long, _
-        Optional ByVal a_timeoutMs As Long = 500&) As Boolean
-    OpenConnection = IConnectable_OpenConnection(a_host, a_port)
+''' <summary>   Opens a TCP Client socket connection. </summary>
+''' <param name="a_address">   [String] An IPv4 dotted-decimal <c>host:port</c> address. </param>
+''' <returns>   [Boolean] True if the connection change successed or cancelled. </returns>
+Public Function OpenConnection(ByVal a_address As String, ByVal a_timeout As Long) As Boolean
+    OpenConnection = IConnectable_OpenConnection(a_address, a_timeout)
 End Function
 
-''' <summary>   Opens a socket connection and sets and returns true if connected. </summary>
-''' <param name="a_host">        [String] An IPv4 dotted-decimal host address. </param>
-''' <param name="a_port">        [Long] The port that the server is listening on. </param>
-''' <param name="a_port">        [Long] The port that the server is listening on. </param>
-''' <param name="a_timeoutMs">   [Optional, Long, 500] The receive timeout in milliseconds. </param>
-''' <returns>   [Boolean] True if the socket is connected. </returns>
-Private Function IConnectable_OpenConnection(ByVal a_host As String, ByVal a_port As Long, _
-        Optional ByVal a_timeoutMs As Long = 500&) As Boolean
+Private Function IConnectable_OpenConnection(ByVal a_address As String, ByVal a_timeout As Long) As Boolean
 
-    If a_host = "localhost" Then a_host = "127.0.0.1"
+    Dim p_details As String: p_details = VBA.vbNullString
     
+    If IConnectable_TryOpenConnection(a_address, a_timeout, p_details) Then
+    
+        IConnectable_OpenConnection = True
+        
+    Else
+    
+        IConnectable_OpenConnection = False
+    
+        cc_isr_Core_IO.UserDefinedErrors.RaiseError cc_isr_Core_IO.UserDefinedErrors.SocketConnectionError, _
+            ThisWorkbook.VBProject.Name & "." & TypeName(Me) & ".IConnectable_OpenConnection", _
+            " " & p_details
+    
+    End If
+    
+End Function
+
+''' <summary>   Tries to open a socket connection. </summary>
+''' <param name="a_address">   [String] An IPv4 dotted-decimal <c>host:port</c> address. </param>
+''' <param name="a_timeout">   [Long] The receive timeout in milliseconds. </param>
+''' <param name="a_details">   [Out, String] details the failure. </param>
+''' <returns>   [Boolean] True if the connection change successed or cancelled. </returns>
+Public Function TryOpenConnection(ByVal a_address As String, _
+    ByVal a_timeout As Long, ByRef a_details As String) As Boolean
+        
+    TryOpenConnection = IConnectable_TryOpenConnection(a_address, a_timeout, a_details)
+    
+End Function
+
+Private Function IConnectable_TryOpenConnection(ByVal a_address As String, _
+    ByVal a_timeout As Long, ByRef a_details As String) As Boolean
+
     Dim p_eventArgs As New cc_isr_Winsock.ConnectionChangingEventArgs
     p_eventArgs.Initialize Me.Connected
     IConnectable_OnConnectionChanging p_eventArgs
     
-    If Not p_eventArgs.Cancel Then
+    If p_eventArgs.Cancel Then
+    
+        IConnectable_TryOpenConnection = True
+        
+    Else
     
         ' a new socket must be created on each connection because closing a socket
         ' releases the socket, which can then be used by the system as soon as it is released.
         Set This.TcpClientSocket = New IPv4StreamSocket
-        Set m_tcpClientSocket = This.TcpClientSocket
+        m_tcpClientSocket = This.TcpClientSocket
     
-        This.TcpClientSocket.OpenConnection a_host, a_port
+        If This.TcpClientSocket.TryOpenConnection(a_address, a_timeout, a_details) Then
+    
+            IConnectable_TryOpenConnection = True
         
-        If This.TcpClientSocket.Connected Then
-            This.TcpClientSocket.ReceiveTimeoutSetter a_timeoutMs
+        Else
+        
+            IConnectable_TryOpenConnection = False
+        
         End If
         
-        OnConnectionChanged Me.Connected
     
     End If
-    
-    IConnectable_OpenConnection = Me.Connected
-    
+
+
 End Function
 
 ''' <summary>   Closes the connection and returns true if not connected. </summary>
@@ -306,31 +347,63 @@ Public Function CloseConnection() As Boolean
     CloseConnection = IConnectable_CloseConnection()
 End Function
 
-''' <summary>   Closes the connection and returns true if not connected. </summary>
-''' <returns>   [Boolean] True if disconnection succeeded; otherwise, false. </returns>
 Private Function IConnectable_CloseConnection() As Boolean
+
+    Dim p_details As String: p_details = VBA.vbNullString
+    
+    If IConnectable_TryCloseConnection(p_details) Then
+    
+        IConnectable_CloseConnection = True
+        
+    Else
+    
+        IConnectable_CloseConnection = False
+    
+        cc_isr_Core_IO.UserDefinedErrors.RaiseError cc_isr_Core_IO.UserDefinedErrors.SocketDisconnectionError, _
+            ThisWorkbook.VBProject.Name & "." & TypeName(Me) & ".IConnectable_CloseConnection", _
+            " " & p_details
+    
+    End If
+
+End Function
+
+''' <summary>   Tries to close the socket connection and zeros the socket id. </summary>
+''' <param name="a_details">   [Out, String] details the failure. </param>
+''' <returns>   [Boolean] True if socket disconnection succeeded; otherwise, false. </returns>
+Public Function TryCloseConnection(ByRef a_details As String) As Boolean
+    TryCloseConnection = IConnectable_TryCloseConnection(a_details)
+End Function
+
+Private Function IConnectable_TryCloseConnection(ByRef a_details As String) As Boolean
 
     Dim p_eventArgs As New cc_isr_Winsock.ConnectionChangingEventArgs
     p_eventArgs.Initialize Me.Connected
     IConnectable_OnConnectionChanging p_eventArgs
     
-    If Not p_eventArgs.Cancel Then
+    If p_eventArgs.Cancel Then
     
-        This.TcpClientSocket.CloseConnection
+        IConnectable_TryCloseConnection = True
+    
+    Else
+    
+        If This.TcpClientSocket.TryCloseConnection(a_details) Then
         
-        ' the socket must be disposed here because it cannot be used after
-        ' the connection is closed.
-        Set m_tcpClientSocket = Nothing
-        Set This.TcpClientSocket = Nothing
+            IConnectable_TryCloseConnection = True
         
-        OnConnectionChanged Me.Connected
+            ' the socket must be disposed here because it cannot be used after
+            ' the connection is closed.
+            Set This.TcpClientSocket = Nothing
+            m_tcpClientSocket = Nothing
             
+        Else
+        
+            IConnectable_TryCloseConnection = False
+            
+        End If
+        
     End If
-    
-    IConnectable_CloseConnection = Not Me.Connected
-    
-End Function
 
+End Function
 
 ''' <summary>   Raises the <see cref="ConnectionChanged"/> event. </summary>
 ''' <para name="a_isConnected">   [Boolean] The connection state. </param>
@@ -355,3 +428,84 @@ Private Sub IConnectable_OnConnectionChanging(ByVal a_eventArgs As ConnectionCha
     RaiseEvent ConnectionChanging(a_eventArgs)
 
 End Sub
+
+' + + + + + + + + + + + + + + + + + + + + + + + + + + +
+'
+'  TCP Socket Event Handlers
+'
+' + + + + + + + + + + + + + + + + + + + + + + + + + + +
+
+''' <summary>   Handles the <see cref="cc_isr_Winsock.TcpClient.ConnectionChanged"/> event. </summary>
+''' <param name="a_eventArgs">   Reference to the <see cref="cc_isr_Winsock.ConnectionChangedEventArgs"/> event arguments. </param>
+Private Sub m_tcpClientSocket_ConnectionChanged(ByVal a_eventArgs As cc_isr_Winsock.ConnectionChangedEventArgs)
+
+    Const p_procedureName As String = "m_tcpClientSocket_ConnectionChanged"
+    
+    ' Trap errors to the error handler
+    On Error GoTo err_Handler
+    
+    This.Connected = a_eventArgs.Connected
+    
+    OnConnectionChanged Me.Connected
+    
+' . . . . . . . . . . . . . . . . . . . . . . . . . . .
+exit_Handler:
+
+    On Error GoTo 0
+    Exit Sub
+
+' . . . . . . . . . . . . . . . . . . . . . . . . . . .
+err_Handler:
+  
+    ' default to false on connection
+    This.Connected = False
+  
+    ' append the error source
+    cc_isr_Core_IO.ErrorMessageBuilder.AppendErrSource p_procedureName, TypeName(Me), ThisWorkbook
+    
+    ' enqueue the error or append its source to the last error.
+    cc_isr_Core_IO.UserDefinedErrors.EnqueueErrorObject
+    
+    ' exit this procedure (not an active handler)
+    On Error Resume Next
+    GoTo exit_Handler
+
+End Sub
+
+''' <summary>   Handles the <see cref="cc_isr_Winsock.TcpClient.ConnectionChanging"/> event. </summary>
+''' <param name="a_eventArgs">   Reference to the <see cref="cc_isr_Winsock.ConnectionChangingEventArgs"/> event arguments. </param>
+Private Sub m_tcpClientSocket_ConnectionChanging(ByVal a_eventArgs As cc_isr_Winsock.ConnectionChangingEventArgs)
+
+    Const p_procedureName As String = "m_tcpClientSocket_ConnectionChanging"
+    
+    ' Trap errors to the error handler
+    On Error GoTo err_Handler
+    
+    IConnectable_OnConnectionChanging a_eventArgs
+
+' . . . . . . . . . . . . . . . . . . . . . . . . . . .
+exit_Handler:
+
+    On Error GoTo 0
+    Exit Sub
+
+' . . . . . . . . . . . . . . . . . . . . . . . . . . .
+err_Handler:
+  
+    ' default to false on connection
+    This.Connected = False
+  
+    ' append the error source
+    cc_isr_Core_IO.ErrorMessageBuilder.AppendErrSource p_procedureName, TypeName(Me), ThisWorkbook
+    
+    ' enqueue the error or append its source to the last error.
+    cc_isr_Core_IO.UserDefinedErrors.EnqueueErrorObject
+    
+    ' exit this procedure (not an active handler)
+    On Error Resume Next
+    GoTo exit_Handler
+
+End Sub
+
+
+

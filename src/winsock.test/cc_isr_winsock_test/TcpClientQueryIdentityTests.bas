@@ -14,10 +14,13 @@ Private Type this_
     Host As String
     Port As Long
     PrologixPort As Long
-    SocketReceiveTimeout As Integer
     Client As TcpClient
+    ReceiveTimeout As Long
+    ReadAfterWriteDelay As Integer
+    AssertTalkOnWrite As Boolean
     DelayStopper As cc_isr_Core_IO.Stopwatch
     ErrTracer As IErrTracer
+    IdentityCompany As String
     TestCount As Integer
     RunCount As Integer
     PassedCount As Integer
@@ -93,8 +96,16 @@ Public Sub BeforeAll()
     This.Host = "192.168.0.252"
     This.Port = 1234
     This.PrologixPort = 1234
-    This.SocketReceiveTimeout = 100
+    This.ReceiveTimeout = 3000
     
+    This.ReceiveTimeout = 3000
+    This.ReadAfterWriteDelay = 1
+    
+    ' set to false when testing with serial poll
+    This.AssertTalkOnWrite = False
+    
+    This.IdentityCompany = "KEITHLEY INSTRUMENTS INC."
+
     Set This.DelayStopper = cc_isr_Core_IO.Factory.NewStopwatch
         
     Set This.ErrTracer = New ErrTracer
@@ -106,7 +117,7 @@ Public Sub BeforeAll()
     
     Set This.Client = cc_isr_Winsock.Factory.NewTcpClient()
     
-    This.Client.OpenConnection This.Host, This.Port
+    This.Client.OpenConnection This.Host, This.Port, This.ReceiveTimeout
    
 ' . . . . . . . . . . . . . . . . . . . . . . . . . . .
 exit_Handler:

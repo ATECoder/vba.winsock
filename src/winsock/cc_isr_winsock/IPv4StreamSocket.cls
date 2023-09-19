@@ -18,16 +18,22 @@ Private Const SEND_PARTIAL_MESSAGE_ERROR = -2
 Private Const RECEIVE_ERROR = -1
 Private Const DEFAULT_TIMEOUT_MS = 500
 
+Implements IConnectable
+
 ''' <summary>   The event that is raised upon change of connection. </summary>
-''' <param name="a_eventArgs">   An <see cref="cc_isr_Winsock.ConnectionChangedEventArgs"/> event args. </param>
+''' <param name="a_eventArgs">   [<see cref="cc_isr_Winsock.ConnectionChangedEventArgs"/>] event args. </param>
 Public Event ConnectionChanged(ByVal a_eventArgs As cc_isr_Winsock.ConnectionChangedEventArgs)
+
+''' <summary>   The event that is raised before changing the connection. </summary>
+''' <param name="a_eventArgs">   [<see cref="cc_isr_Winsock.ConnectionChangingEventArgs"/>] event args. </param>
+Public Event ConnectionChanging(ByVal a_eventArgs As cc_isr_Winsock.ConnectionChangingEventArgs)
 
 ''' <summary>   Permits an incoming connection attempt on a socket. </summary>
 ''' <param name="a_socketId">             [in] A descriptor that identifies a socket that has been placed in a listening state with the listen function.
 '''                                       The connection is actually made with the socket that is returned by accept. </param>
 ''' <param name="a_clientAddress">        [out] An optional pointer to a buffer that receives the address of the connecting entity,
 '''                                        as known to the communications layer. The exact format of the address parameter is determined by the address family
-'''                                        that was established when the socket from the ws32_SocketAddress structure was created. </param>
+'''                                        that was established when the socket from the ws32_Address structure was created. </param>
 ''' <param name="a_clientAddressLength">   [in, out] An optional pointer to an integer that contains the length of structure pointed to by
 '''                                        the address parameter. </param>
 ''' <returns>   If no error occurs, accept returns a value of type SOCKET that is a descriptor for the new socket.
@@ -36,18 +42,18 @@ Public Event ConnectionChanged(ByVal a_eventArgs As cc_isr_Winsock.ConnectionCha
 ''' The integer referred to by clientAddressLength initially contains the amount of space pointed to by clientAddress. On return it
 ''' will contain the actual length in bytes of the address returned. <returns>
 Private Declare PtrSafe Function accept_ Lib "wsock32.dll" Alias "accept" ( _
-        ByVal a_socketId As Long, ByRef a_clientAddress As wsock32.ws32_SocketAddress, _
+        ByVal a_socketId As Long, ByRef a_clientAddress As wsock32.ws32_Address, _
         ByVal a_clientAddressLength As Integer) As Long
 
 ''' <summary>   Associates a local address with a socket. </summary>
 ''' <param name="a_socketid">        [in] A descriptor identifying an unbound socket. </param>
-''' <param name="a_address">         [in] A pointer to a ws32_SocketAddress_in structure of the local address
+''' <param name="a_address">         [in] A pointer to a ws32_Address_in structure of the local address
 '''                                  to assign to the bound socket . </param>
 ''' <param name="a_addressLength">   [in] The length, in bytes, of the value pointed to by address. </param>
 ''' <returns>   Zero if no error occurs; otherwise, a value of ws32_SOCKET_ERROR is returned.
 ''' A specific error code can be retrieved by calling WSAGetLastError. <returns>
 Private Declare PtrSafe Function bind_ Lib "wsock32.dll" Alias "bind" ( _
-        ByVal a_socketId As Long, ByRef a_address As wsock32.ws32_SocketAddress_in, _
+        ByVal a_socketId As Long, ByRef a_address As wsock32.ws32_Address_in, _
         ByVal a_addressLength As Integer) As Long
 
 ''' <summary>   Closes an existing socket. </summary>
@@ -66,14 +72,14 @@ Private Declare PtrSafe Function closesocket_ Lib "wsock32.dll" Alias "closesock
 
 ''' <summary>   Establishes a connection to a specified socket. </summary>
 ''' <param name="a_socketId">     [in] A descriptor identifying an unconnected socket. </param>
-''' <param name="a_address">      [in] A pointer to the <see cref="ws32_SocketAddress_in"/>   structure to which the
+''' <param name="a_address">      [in] A pointer to the <see cref="ws32_Address_in"/>   structure to which the
 '''                               connection should be established. </param>
-''' <param name="a_addressLen">   [in] The length, in bytes, of the ws32_SocketAddress structure pointed to by the
+''' <param name="a_addressLen">   [in] The length, in bytes, of the ws32_Address structure pointed to by the
 '''                               <paramref name="address"/>   parameter. </param>
 ''' <returns>   Zero if no error occurs; otherwise, a value of ws32_SOCKET_ERROR is returned.
 ''' A specific error code can be retrieved by calling WSAGetLastError. <returns>
 Private Declare PtrSafe Function connect_ Lib "wsock32.dll" Alias "connect" ( _
-        ByVal a_socketId As Long, ByRef a_address As wsock32.ws32_SocketAddress_in, _
+        ByVal a_socketId As Long, ByRef a_address As wsock32.ws32_Address_in, _
         ByVal a_addressLen As Long) As Long
 
 ''' <summary>   Places a socket in a state in which it is listening for an incoming connection. </summary>
@@ -154,9 +160,9 @@ Private Declare PtrSafe Function recv_ Lib "wsock32.dll" Alias "recv" ( _
         ByVal a_flags As Long) As Long
 
 Private Type this_
-    SocketPort As Long
-    socketHost As String
-    SocketAddress As String
+    Port As Long
+    Host As String
+    Address As String
     SocketId As Long
     Connected As Boolean
     Listening As Boolean
@@ -175,8 +181,8 @@ Private Sub Class_Initialize()
     ' this is required to initialize Winsock.  It will only ran once.
     Winsock.Initialize
     
-    This.socketHost = vbNullString
-    This.SocketAddress = vbNullString
+    This.Host = vbNullString
+    This.Address = vbNullString
     
     On Error GoTo 0
 
@@ -220,47 +226,22 @@ Public Function Initialize() As IPv4StreamSocket
 
 End Function
 
-''' <summary>   Accepts an active connection, sets the provided socket read timeout, and
-''' returns this object as an active Inet stream socket using the provided socket id. </summary>
-''' <param name="a_connectedSocketId">   [Long] The ID of a connected socket. </param>
-''' <param name="a_timeoutMs">           [Optional, Long, 500] The receive timeout interval in milliseconds. </param>
-''' <returns>   [<see cref="IPv4StreamSocket"/>]. </returns>
-Public Function Accept(ByVal a_connectedSocketId As Long, _
-        Optional ByVal a_timeoutMs As Long = 500) As IPv4StreamSocket
-    
-    If Me.Connected Then
-        cc_isr_Core_IO.UserDefinedErrors.RaiseError cc_isr_Core_IO.UserDefinedErrors.InvalidOperationError, _
-            ThisWorkbook.VBProject.Name & "." & TypeName(Me) & ".Accept", _
-            " This Inet Stream Socket is already connected to " & This.SocketAddress & _
-            " A new INet Stream Socket must be used to accept this connected socket ID " & _
-            a_connectedSocketId & "."
-    End If
-    
-    
-    This.SocketId = a_connectedSocketId
-    This.Connected = True
-    Me.ReceiveTimeoutSetter a_timeoutMs
-    Set Accept = Me
-
-End Function
+' + + + + + + + + + + + + + + + + + + + + + + + + + + +
+'
+' Socket implementation
+'
+' + + + + + + + + + + + + + + + + + + + + + + + + + + +
 
 ''' <summary>   Returns the port the server is listening to. </summary>
 ''' <value>   [Long] The port the server listens to. </value>
-Public Property Get SocketPort() As Long
-    SocketPort = This.SocketPort
+Public Property Get Port() As Long
+    Port = This.Port
 End Property
 
 ''' <summary>   Gets the IPv4 dotted-decimal host address. </summary>
 ''' <value>   [String] The IPv4 dotted-decimal host address. </value>
-Public Property Get socketHost() As String
-    socketHost = This.socketHost
-End Property
-
-''' <summary>   Gets the socket address consisting of the IPv4 dotted-decimal host
-''' and the port the server is listening too. </summary>
-''' <value>   [String] The IPv4 dotted-decimal host address and port delimited with a colon. </value>
-Public Property Get SocketAddress() As String
-    SocketAddress = This.SocketAddress
+Public Property Get Host() As String
+    Host = This.Host
 End Property
 
 ''' <summary>   Returns a descriptor identifying the socket. </summary>
@@ -271,284 +252,299 @@ Attribute SocketId.VB_UserMemId = 0
     SocketId = This.SocketId
 End Property
 
+''' <summary>   Tries to parse the TCP address in the form of <c>host:port</c>. </summary>
+''' <param name="a_address">   [String] An IPv4 dotted-decimal <c>host:port</c> address. </param>
+''' <param name="a_host">      [Out, String] An IPv4 dotted-decimal host address. </param>
+''' <param name="a_port">      [Out, Long] The port that the server is listening on. </param>
+''' <param name="a_host">      [Out, String] Detaisl the failure reason. </param>
+''' <returns>   [Boolean] True if the address parsed. </returns>
+Public Function TryParseAddress(ByVal a_address As String, ByRef a_host As String, ByRef a_port As Long, _
+    ByRef a_details As String) As Boolean
+
+    Dim p_result As Boolean
+    
+    If VBA.vbNullString = a_address Then
+        a_details = ThisWorkbook.VBProject.Name & "." & TypeName(Me) & ".TryParseAddress" & _
+            " 'a_address' argument '" & a_address & "' is empty."
+        p_result = False
+    Else
+    
+        a_host = cc_isr_Core.StringExtensions.Pop(a_address, ":")
+        
+        If VBA.vbNullString = a_host Then
+            
+            a_details = ThisWorkbook.VBProject.Name & "." & TypeName(Me) & ".TryParseAddress" & _
+                " Host part in '" & a_address & "' is empty."
+            p_result = False
+        
+        Else
+            
+            If 1 = VBA.InStr(1, a_host, "localhost", vbTextCompare) Then: a_host = "127.0.0.1"
+            
+            Dim p_port As String
+            p_port = cc_isr_Core.StringExtensions.Pop(a_address, ":")
+                
+            If VBA.vbNullString = p_port Then
+            
+                a_details = ThisWorkbook.VBProject.Name & "." & TypeName(Me) & ".TryParseAddress" & _
+                    " Port part in '" & a_address & "' is empty."
+                p_result = False
+            
+            Else
+                
+                p_result = cc_isr_Core.StringExtensions.TryParseLong(p_port, a_port, a_details)
+            
+            End If
+            
+        End If
+    
+    End If
+    TryParseAddress = p_result
+    
+End Function
+
+' + + + + + + + + + + + + + + + + + + + + + + + + + + +
+'
+' Connectable implementation
+'
+' + + + + + + + + + + + + + + + + + + + + + + + + + + +
+
+''' <summary>   Gets the address consisting of the IPv4 dotted-decimal host
+''' and the port the server is listening too. </summary>
+''' <value>   [String] The IPv4 dotted-decimal host address and port delimited with a colon. </value>
+Public Property Get Address() As String
+    Address = IConnectable_Address
+End Property
+
+Private Property Get IConnectable_Address() As String
+    IConnectable_Address = This.Address
+End Property
+
+''' <summary>   Returns true if a connection can be made. </summary>
+''' <value>   [Boolean] True if a connection can be made. </value>
+Public Property Get CanConnect() As Boolean
+    CanConnect = IConnectable_CanConnect
+End Property
+
+''' <summary>   Returns true if a connection can be made. </summary>
+''' <value>   [Boolean] True if a connection can be made. </value>
+Private Property Get IConnectable_CanConnect() As Boolean
+    
+    IConnectable_CanConnect = This.SocketId <> wsock32.ws32_INVALID_SOCKET
+    
+End Property
+
 ''' <summary>   Returns the connection state of the socket. </summary>
 ''' <value>   True if the socket is connected; otherwise, False. </value>
 Public Property Get Connected() As Boolean
-    Connected = This.Connected
+    
+    Connected = IConnectable_Connected
+
 End Property
 
-''' <summary>   Opens a socket connection and sets and returns the socket id. </summary>
-''' <param name="a_host">      [String] An IPv4 dotted-decimal host address. </param>
-''' <param name="a_port">      [Long] The port that the server is listening on. </param>
-''' <param name="a_timeout">   [Long] The receive timeout in milliseconds. </param>
-''' <param name="a_details">   [Out, String] details the failure. </param>
-''' <returns>   [Boolean] True if the socket is connected. </returns>
-Public Function TryOpenConnection(ByVal a_host As String, ByVal a_port As Long, _
-    ByVal a_timeout As Long, ByRef a_details As String) As Boolean
+Private Property Get IConnectable_Connected() As Boolean
+    
+    IConnectable_Connected = This.Connected
 
-    This.Connected = False
-    If VBA.vbNullString = a_host Then
-        a_details = ThisWorkbook.VBProject.Name & "." & TypeName(Me) & ".OpenConnection" & _
-                " 'a_host' argument is empty."
+End Property
+
+''' <summary>   Close the connection and releases the socket resources. </summary>
+Public Sub Dispose()
+    IConnectable_Dispose
+End Sub
+
+Private Sub IConnectable_Dispose()
+    
+    On Error Resume Next
+    
+    Dim p_disconnected As Boolean: p_disconnected = Not Me.Connected
+    
+    If Not p_disconnected Then p_disconnected = IConnectable_CloseConnection()
+    
+    This.SocketId = wsock32.ws32_INVALID_SOCKET
+    
+    On Error GoTo 0
+
+End Sub
+
+''' <summary>   Opens a socket connection. </summary>
+''' <param name="a_address">   [String] An IPv4 dotted-decimal <c>host:port</c> address. </param>
+''' <returns>   [Boolean] True if the connection change successed or cancelled. </returns>
+Public Function OpenConnection(ByVal a_address As String, ByVal a_timeout As Long) As Boolean
+    OpenConnection = IConnectable_OpenConnection(a_address, a_timeout)
+End Function
+
+Private Function IConnectable_OpenConnection(ByVal a_address As String, ByVal a_timeout As Long) As Boolean
+    
+    Dim p_details As String: p_details = VBA.vbNullString
+    
+    If IConnectable_TryOpenConnection(a_address, a_timeout, p_details) Then
+    
+        IConnectable_OpenConnection = True
+        
     Else
     
-        If a_host = "localhost" Then: a_host = "127.0.0.1"
+        IConnectable_OpenConnection = False
+    
+        cc_isr_Core_IO.UserDefinedErrors.RaiseError cc_isr_Core_IO.UserDefinedErrors.SocketConnectionError, _
+            ThisWorkbook.VBProject.Name & "." & TypeName(Me) & ".OpenConnection", _
+            " " & p_details
+    
+    End If
+
+End Function
+
+''' <summary>   Tries to open a socket connection. </summary>
+''' <param name="a_address">   [String] An IPv4 dotted-decimal <c>host:port</c> address. </param>
+''' <param name="a_timeout">   [Long] The receive timeout in milliseconds. </param>
+''' <param name="a_details">   [Out, String] details the failure. </param>
+''' <returns>   [Boolean] True if the connection change successed or cancelled. </returns>
+Public Function TryOpenConnection(ByVal a_address As String, _
+    ByVal a_timeout As Long, ByRef a_details As String) As Boolean
         
-        ' Open a connection to a server
-        ' can use this: https://www.allscoop.com/Tcp-listen.php to listen.
+    TryOpenConnection = IConnectable_TryOpenConnection(a_address, a_timeout, a_details)
+    
+End Function
+
+Private Function IConnectable_TryOpenConnection(ByVal a_address As String, _
+    ByVal a_timeout As Long, ByRef a_details As String) As Boolean
+
+    If Me.TryParseAddress(a_address, This.Host, This.Port, a_details) Then
+    
+        Dim p_eventArgs As New cc_isr_Winsock.ConnectionChangingEventArgs
+        p_eventArgs.Initialize Me.Connected
+        IConnectable_OnConnectionChanging p_eventArgs
+    
+        If p_eventArgs.Cancel Then
         
-        Dim p_address As wsock32.ws32_SocketAddress_in
-        
-        ' set the binary address
-        p_address.sin_addr.s_addr = WinsockApi.ToInetAddress(a_host)
-        
-        p_address.sin_family = wsock32.ws32_AF_INET
-        
-        ' set the port in network byte order
-        p_address.sin_port = WinsockApi.ToInetByteOrder(a_port)
-        
-        Dim p_connectResult As Long
-        p_connectResult = connect_(This.SocketId, p_address, Len(p_address))
-        
-        If p_connectResult = wsock32.ws32_SOCKET_ERROR Then
-            This.Connected = False
-            a_details = ThisWorkbook.VBProject.Name & "." & TypeName(Me) & ".TryOpenConnection" & _
-                " failed opening a connection to " & a_host & ":" & VBA.CStr(a_port) & _
-                "; winsock32.connect(" & VBA.CStr(This.SocketId) & ", address, length) " & _
-                "returned socket error " & _
-                VBA.CStr(p_connectResult) & Winsock.LastErrorMessage()
+            IConnectable_TryOpenConnection = True
+            
         Else
-            This.SocketPort = a_port
-            This.socketHost = a_host
-            This.SocketAddress = a_host & ":" & VBA.CStr(a_port)
-            This.Connected = True
-            Me.ReceiveTimeoutSetter a_timeout
-            OnConnectionChanged This.Connected
-        End If
         
+            This.Connected = False
+            
+            Dim p_Address As wsock32.ws32_Address_in
+            
+            ' set the binary address
+            p_Address.sin_addr.s_addr = WinsockApi.ToInetAddress(This.Host)
+            
+            p_Address.sin_family = wsock32.ws32_AF_INET
+            
+            ' set the port in network byte order
+            p_Address.sin_port = WinsockApi.ToInetByteOrder(This.Port)
+            
+            Dim p_connectResult As Long
+            p_connectResult = connect_(This.SocketId, p_Address, Len(p_Address))
+            
+            If p_connectResult = wsock32.ws32_SOCKET_ERROR Then
+                IConnectable_TryOpenConnection = False
+                This.Connected = False
+                a_details = ThisWorkbook.VBProject.Name & "." & TypeName(Me) & ".IConnectable_TryOpenConnection" & _
+                    ". Failed opening a connection to " & This.Host & ":" & VBA.CStr(This.Port) & _
+                    "; winsock32.connect(" & VBA.CStr(This.SocketId) & ", address, length) " & _
+                    "returned socket error " & _
+                    VBA.CStr(p_connectResult) & Winsock.LastErrorMessage()
+            Else
+                This.Address = a_address
+                This.Connected = True
+                Me.ReceiveTimeoutSetter a_timeout
+                IConnectable_TryOpenConnection = True
+                OnConnectionChanged This.Connected
+            End If
+            
+        End If
+    
+    Else
+    
+    IConnectable_TryOpenConnection = False
+    
     End If
     
-    TryOpenConnection = This.Connected
-
 End Function
 
 ''' <summary>   Tries to close the socket connection and zeros the socket id. </summary>
 ''' <param name="a_details">   [Out, String] details the failure. </param>
-''' <returns>   [Boolean] True if socket disconnection succeeded; otherwise, false. </returns>
+''' <returns>   [Boolean] True if the connection change successed or cancelled. </returns>
 Public Function TryCloseConnection(ByRef a_details As String) As Boolean
-
-    Dim p_result As Long
-    p_result = closesocket_(This.SocketId)
-    
-    ' set the socket id to invalid to indicate that it is no longer viable.
-    This.SocketId = wsock32.ws32_INVALID_SOCKET
-    
-    If p_result = wsock32.ws32_SOCKET_ERROR Then
-        
-        TryCloseConnection = False
-        a_details = ThisWorkbook.VBProject.Name & "." & TypeName(Me) & ".TryCloseConnection" & _
-            " failed closing a connection to " & This.SocketAddress & _
-            "; winsock32.closesocket(" & VBA.CStr(This.SocketId) & ") " & _
-            "returned socket error " & _
-            VBA.CStr(p_result) & Winsock.LastErrorMessage()
-                
-    Else
-        This.Connected = False
-        
-        TryCloseConnection = True
-        
-        OnConnectionChanged This.Connected
-        
-    End If
-
+    TryCloseConnection = IConnectable_TryCloseConnection(a_details)
 End Function
 
-''' <summary>   Opens a socket connection and sets and returns the socket id. </summary>
-''' <param name="a_host">   [String] An IPv4 dotted-decimal host address. </param>
-''' <param name="a_port">   [Long] The port that the server is listening on. </param>
-''' <returns>   [Boolean] True if the socket is connected. </returns>
-Public Function OpenConnection(ByVal a_host As String, ByVal a_port As Long) As Boolean
-   
-    This.Connected = False
-    If VBA.vbNullString = a_host Then
-        cc_isr_Core_IO.UserDefinedErrors.RaiseError cc_isr_Core_IO.UserDefinedErrors.InvalidArgumentError, _
-            ThisWorkbook.VBProject.Name & "." & TypeName(Me) & ".OpenConnection", _
-            " Argument: a_host is empty"
-    End If
-    
-    If a_host = "localhost" Then: a_host = "127.0.0.1"
-    
-    ' Open a connection to a server
-    ' can use this: https://www.allscoop.com/Tcp-listen.php to listen.
-    
-    Dim p_address As wsock32.ws32_SocketAddress_in
-    
-    ' set the binary address
-    p_address.sin_addr.s_addr = WinsockApi.ToInetAddress(a_host)
-    
-    p_address.sin_family = wsock32.ws32_AF_INET
-    
-    ' set the port in network byte order
-    p_address.sin_port = WinsockApi.ToInetByteOrder(a_port)
-    
-    Dim p_connectResult As Long
-    p_connectResult = connect_(This.SocketId, p_address, Len(p_address))
-    
-    If p_connectResult = wsock32.ws32_SOCKET_ERROR Then
-        This.Connected = False
-        cc_isr_Core_IO.UserDefinedErrors.RaiseError cc_isr_Core_IO.UserDefinedErrors.SocketConnectionError, _
-            ThisWorkbook.VBProject.Name & "." & TypeName(Me) & ".OpenConnection", _
-            " Failed opening a connection. winsock32.connect(" & VBA.CStr(This.SocketId) & ", address, length) for " & _
-            a_host & ":" & VBA.CStr(a_port) & " returned socket error " & _
-            VBA.CStr(p_connectResult) & Winsock.LastErrorMessage()
-    Else
-        This.Connected = True
-        
-        OnConnectionChanged This.Connected
+Private Function IConnectable_TryCloseConnection(ByRef a_details As String) As Boolean
 
+    Dim p_eventArgs As New cc_isr_Winsock.ConnectionChangingEventArgs
+    p_eventArgs.Initialize Me.Connected
+    IConnectable_OnConnectionChanging p_eventArgs
+    
+    If p_eventArgs.Cancel Then
+    
+        IConnectable_TryCloseConnection = True
+    
+    Else
+    
+        Dim p_result As Long
+        p_result = closesocket_(This.SocketId)
+        
+        ' set the socket id to invalid to indicate that it is no longer viable.
+        This.SocketId = wsock32.ws32_INVALID_SOCKET
+        
+        ' the socket is no longer valid; this is disconnected
+        This.Connected = False
+        
+        If p_result = wsock32.ws32_SOCKET_ERROR Then
+            
+            IConnectable_TryCloseConnection = False
+            
+            a_details = ThisWorkbook.VBProject.Name & "." & TypeName(Me) & ".IConnectable_TryCloseConnection" & _
+                " failed closing a connection to " & This.Address & _
+                "; winsock32.closesocket(" & VBA.CStr(This.SocketId) & ") " & _
+                "returned socket error " & _
+                VBA.CStr(p_result) & Winsock.LastErrorMessage()
+                    
+        Else
+        
+            IConnectable_TryCloseConnection = True
+            
+            OnConnectionChanged This.Connected
+            
+        End If
+            
     End If
-    
-    This.SocketPort = a_port
-    This.socketHost = a_host
-    This.SocketAddress = a_host & ":" & VBA.CStr(a_port)
-    
-    OpenConnection = This.Connected
 
 End Function
 
 ''' <summary>   Closes the socket connection and zeros the socket id. </summary>
-''' <returns>   [Boolean] True if socket disconnection succeeded; otherwise, false. </returns>
+''' <returns>   [Boolean] True if the connection change successed or cancelled. </returns>
 Public Function CloseConnection() As Boolean
+    CloseConnection = IConnectable_CloseConnection
+End Function
 
-    Dim p_result As Long
-    p_result = closesocket_(This.SocketId)
+''' <summary>   Closes the socket connection and zeros the socket id. </summary>
+''' <returns>   [Boolean] True if the connection change successed or cancelled. </returns>
+Private Function IConnectable_CloseConnection() As Boolean
+
+    Dim p_details As String: p_details = VBA.vbNullString
     
-    ' set the socket id to invalid to indicate that it is no longer viable.
-    This.SocketId = wsock32.ws32_INVALID_SOCKET
+    If IConnectable_TryCloseConnection(p_details) Then
+        
+        IConnectable_CloseConnection = True
     
-    If p_result = wsock32.ws32_SOCKET_ERROR Then
-        CloseConnection = False
+    Else
+    
+        IConnectable_CloseConnection = False
+    
         cc_isr_Core_IO.UserDefinedErrors.RaiseError cc_isr_Core_IO.UserDefinedErrors.SocketDisconnectionError, _
             ThisWorkbook.VBProject.Name & "." & TypeName(Me) & ".CloseConnection", _
-            " Failed closing a connection to " & This.SocketAddress & _
-            "; winsock32.closesocket(" & VBA.CStr(This.SocketId) & ") " & _
-            "returned socket error " & _
-            VBA.CStr(p_result) & Winsock.LastErrorMessage()
-    Else
-        This.Connected = False
-        
-        CloseConnection = True
-        
-        OnConnectionChanged This.Connected
-        
+            p_details
+    
     End If
-
+    
 End Function
 
-''' <summary>   Associates a local address with a socket. </summary>
-''' <param name="a_address">   The INet address to bind to. </param>
-''' <param name="a_port">   The port that the server is listening on. </param>
-''' <returns>   [Boolean] True if the socket is bound. </returns>
-Public Function BindTo(ByVal a_address As Long, ByVal a_port As Long) As Boolean
-
-    Dim p_endpoint As wsock32.ws32_SocketAddress_in
-    p_endpoint.sin_family = wsock32.ws32_AF_INET
-    p_endpoint.sin_addr.s_addr = a_address
-    p_endpoint.sin_port = WinsockApi.ToInetByteOrder(a_port)
-    
-    Dim p_bindResult As Long
-    p_bindResult = bind_(This.SocketId, p_endpoint, 16)
-    
-    If p_bindResult = wsock32.ws32_SOCKET_ERROR Then
-        cc_isr_Core_IO.UserDefinedErrors.RaiseError cc_isr_Core_IO.UserDefinedErrors.SocketDisconnectionError, _
-            ThisWorkbook.VBProject.Name & "." & TypeName(Me) & ".BindTo", _
-            " Failed binding to address " & VBA.CStr(a_address) & " at port " & VBA.CStr(a_port) & _
-            "; winsock32.bind(" & VBA.CStr(This.SocketId) & ", endpoint, 16) " & _
-            "returned socket error " & _
-            VBA.CStr(p_bindResult) & Winsock.LastErrorMessage()
-        This.Connected = False
-    Else
-        This.Connected = True
-    End If
-    BindTo = This.Connected
-   
-End Function
-
-''' <summary>   Returns the listening state of the socket. </summary>
-''' <value>   [Boolean] True if the socket is Listening; otherwise, False. </value>
-Public Property Get Listening() As Boolean
-    Listening = This.Listening
-End Property
-
-
-''' <summary>   Places a socket in a state in which it is listening for an incoming connection. </summary>
-''' <param name="a_backlog">   [Optional, 10] [in] The maximum length of the queue of pending connections. </para>
-''' <returns>   [Boolean] True if the socket is Listening; otherwise, False. </returns>
-Public Function StartListening(Optional ByVal a_backlog As Integer = 10) As Boolean
-
-    Dim p_listenResult As Long
-    p_listenResult = listen_(This.SocketId, a_backlog)
-    
-    If p_listenResult = wsock32.ws32_SOCKET_ERROR Then
-        cc_isr_Core_IO.UserDefinedErrors.RaiseError cc_isr_Core_IO.UserDefinedErrors.SocketListenError, _
-            ThisWorkbook.VBProject.Name & "." & TypeName(Me) & ".StartListening", _
-            " Failed to start listening at socket " & VBA.CStr(This.SocketId) & _
-            "; winsock32.listen(" & VBA.CStr(This.SocketId) & ", " & VBA.CStr(a_backlog) & ") " & _
-            "returned socket error " & _
-            VBA.CStr(p_listenResult) & Winsock.LastErrorMessage()
-        This.Listening = False
-    Else
-        This.Listening = True
-    End If
-    StartListening = This.Listening
-
-End Function
-
-''' <summary>   Permits an incoming connection attempt on a socket. </summary>
-''' <param name="a_serverSocket">   [<see cref="IPv4StreamSocket"/>] The server socket. </param>
-''' <param name="a_timeoutMs">      [Optional, Long, 500] The maximum milliseconds time for select to wait. </param>
-''' <returns>   the connected socket. </returns>
-Public Function AcceptTcpClient(ByVal a_serverSocket As IPv4StreamSocket, _
-        Optional ByVal a_timeoutMs As Long = 500) As IPv4StreamSocket
-
-    ' add this socket to a socket set.
-    WinsockApi.FD_SET_INIT This.FdSet
-    WinsockApi.FD_SET_ADD This.SocketId, This.FdSet
-    
-    ' check if we have available socket for readability
-    
-    Dim p_readableSocketCount As Integer
-    p_readableSocketCount = WinsockApi.DetermineReadability(This.FdSet, a_timeoutMs)
-    
-    If p_readableSocketCount = 0 Then
-        Set AcceptTcpClient = Nothing
-        Exit Function
-    End If
-    
-    Dim p_socketId As Long
-    Dim p_socketAddress As wsock32.ws32_SocketAddress
-    
-    ' get a connected socket id
-    
-    p_socketId = accept_(a_serverSocket.SocketId, p_socketAddress, wsock32.ws32_SocketAddressLen)
-    
-    If p_socketId = wsock32.ws32_INVALID_SOCKET Then
-        cc_isr_Core_IO.UserDefinedErrors.RaiseError cc_isr_Core_IO.UserDefinedErrors.SocketListenError, _
-            ThisWorkbook.VBProject.Name & "." & TypeName(Me) & ".AcceptTcpClient", _
-            " Failed accepting a tcp client at server socket " & VBA.CStr(a_serverSocket.SocketId) & _
-            "; winsock32.accept(" & VBA.CStr(a_serverSocket.SocketId) & ", socketAddress, length) " & _
-            "returned invalid socket error " & _
-            VBA.CStr(p_socketId) & Winsock.LastErrorMessage()
-        Exit Function
-    End If
-    
-    Dim p_clientSocket As IPv4StreamSocket
-    Set p_clientSocket = New IPv4StreamSocket
-    p_clientSocket.Accept p_socketId, a_timeoutMs
-    
-    Set AcceptTcpClient = p_clientSocket
-    
-End Function
+' + + + + + + + + + + + + + + + + + + + + + + + + + + +
+'
+' Send
+'
+' + + + + + + + + + + + + + + + + + + + + + + + + + + +
 
 ''' <summary>   Sends a terminated message to the server. </summary>
 ''' <param name="a_message">   [String] The terminated message. </param>
@@ -589,6 +585,59 @@ Public Function SendMessage(ByVal a_message As String) As Long
     End If
 
 End Function
+
+''' <summary>   Sends a terminated message to the server. </summary>
+''' <param name="a_message">   [String] The terminated message. </param>
+''' <param name="a_count">     [Out, Long] The number of characters that were sent. </param>
+''' <param name="a_details">   [Out, String] details the failure. </param>
+''' <returns>   [Boolean]. True if nothing to send or all message sent. </returns>
+Public Function TrySendMessage(ByVal a_message As String, ByRef a_details As String) As Boolean
+
+    If VBA.vbNullString = a_message Then
+    
+        TrySendMessage = True
+        
+    Else
+    
+        Dim p_messageLength As Integer: p_messageLength = Len(a_message)
+        Dim p_sentLength As Integer
+        p_sentLength = send_(This.SocketId, ByVal a_message, Len(a_message), 0)
+        
+        If p_sentLength < 0 Then
+            
+            ' if the sent length is negative, we have an API error.
+            a_details = ThisWorkbook.VBProject.Name & "." & TypeName(Me) & ".SendMessage" & _
+                ". Failed sending " & a_message & _
+                "; winsock32.send(" & VBA.CStr(This.SocketId) & ", message, length, 0) " & _
+                "returned socket error " & _
+                VBA.CStr(p_sentLength) & Winsock.LastErrorMessage()
+            
+            TrySendMessage = False
+            
+        ElseIf p_sentLength <> p_messageLength Then
+            
+            a_details = ThisWorkbook.VBProject.Name & "." & TypeName(Me) & ".SendMessage" & _
+                ". Failed sending " & a_message & _
+                "; winsock32.send(" & VBA.CStr(This.SocketId) & ", message, length, 0) " & _
+                "; A partial message was sent: " & VBA.CStr(p_sentLength) & " out of " & VBA.CStr(p_messageLength)
+                
+            TrySendMessage = False
+            
+        Else
+            
+            TrySendMessage = True
+        
+        End If
+        
+    End If
+
+End Function
+
+' + + + + + + + + + + + + + + + + + + + + + + + + + + +
+'
+' Receive
+'
+' + + + + + + + + + + + + + + + + + + + + + + + + + + +
 
 ''' <summary>   Receives a null terminated message from the server until reaching
 ''' the specified termination or the maximum length. </summary>
@@ -792,26 +841,26 @@ Public Function ReceiveUntilTimeout(Optional ByVal a_bufferSize As Integer = 102
 End Function
 
 ''' <summary>   Sets the socket receive timeout. </summary>
-''' <param name="a_timeoutMs">   The timeout interval in milliseconds. </param>
-Public Sub ReceiveTimeoutSetter(ByVal a_timeoutMs As Long)
+''' <param name="a_timeout">   The timeout interval in milliseconds. </param>
+Public Sub ReceiveTimeoutSetter(ByVal a_timeout As Long)
 
     Dim p_result As Long
     
     ' check if the requested receive timeout is different from the
     ' timeout that was already set.
-    If This.ReceiveTimeout <> a_timeoutMs Then
+    If This.ReceiveTimeout <> a_timeout Then
     
-        p_result = setsockopt_(This.SocketId, wsock32.ws32_SOL_SOCKET, wsock32.ws32_SO_RCVTIMEO, a_timeoutMs, 4)
+        p_result = setsockopt_(This.SocketId, wsock32.ws32_SOL_SOCKET, wsock32.ws32_SO_RCVTIMEO, a_timeout, 4)
     
         If p_result = wsock32.ws32_SOCKET_ERROR Then
             cc_isr_Core_IO.UserDefinedErrors.RaiseError cc_isr_Core_IO.UserDefinedErrors.SocketReceiveError, _
                 ThisWorkbook.VBProject.Name & "." & TypeName(Me) & ".ReceiveTimeoutSetter", _
                 " Failed setting receive timeout. winsock32.setsockopt(" & _
                 VBA.CStr(This.SocketId) & ", wsock32.ws32_SOL_SOCKET, wsock32.ws32_SO_RCVTIMEO, " & _
-                VBA.CStr(a_timeoutMs) & ", 4) returned " & _
+                VBA.CStr(a_timeout) & ", 4) returned " & _
                 VBA.CStr(p_result) & Winsock.LastErrorMessage()
         Else
-            This.ReceiveTimeout = a_timeoutMs
+            This.ReceiveTimeout = a_timeout
         End If
     End If
     
@@ -826,16 +875,167 @@ Public Property Get ReceiveTimeout() As Long
 End Property
 
 ' + + + + + + + + + + + + + + + + + + + + + + + + + + +
+'
+' TCP Client implementation
+'
+' + + + + + + + + + + + + + + + + + + + + + + + + + + +
+
+''' <summary>   Accepts an active connection, sets the provided socket read timeout, and
+''' returns this object as an active Inet stream socket using the provided socket id. </summary>
+''' <param name="a_connectedSocketId">   [Long] The ID of a connected socket. </param>
+''' <param name="a_timeout">           [Optional, Long, 500] The receive timeout interval in milliseconds. </param>
+''' <returns>   [<see cref="IPv4StreamSocket"/>]. </returns>
+Public Function Accept(ByVal a_connectedSocketId As Long, _
+        Optional ByVal a_timeout As Long = 500) As IPv4StreamSocket
+    
+    If Me.Connected Then
+        cc_isr_Core_IO.UserDefinedErrors.RaiseError cc_isr_Core_IO.UserDefinedErrors.InvalidOperationError, _
+            ThisWorkbook.VBProject.Name & "." & TypeName(Me) & ".Accept", _
+            " This Inet Stream Socket is already connected to " & This.Address & _
+            " A new INet Stream Socket must be used to accept this connected socket ID " & _
+            a_connectedSocketId & "."
+    End If
+    
+    
+    This.SocketId = a_connectedSocketId
+    This.Connected = True
+    Me.ReceiveTimeoutSetter a_timeout
+    Set Accept = Me
+
+End Function
+
+''' <summary>   Associates a local address with a socket. </summary>
+''' <param name="a_address">   The INet address to bind to. </param>
+''' <param name="a_port">   The port that the server is listening on. </param>
+''' <returns>   [Boolean] True if the socket is bound. </returns>
+Public Function BindTo(ByVal a_address As Long, ByVal a_port As Long) As Boolean
+
+    Dim p_endpoint As wsock32.ws32_Address_in
+    p_endpoint.sin_family = wsock32.ws32_AF_INET
+    p_endpoint.sin_addr.s_addr = a_address
+    p_endpoint.sin_port = WinsockApi.ToInetByteOrder(a_port)
+    
+    Dim p_bindResult As Long
+    p_bindResult = bind_(This.SocketId, p_endpoint, 16)
+    
+    If p_bindResult = wsock32.ws32_SOCKET_ERROR Then
+        cc_isr_Core_IO.UserDefinedErrors.RaiseError cc_isr_Core_IO.UserDefinedErrors.SocketDisconnectionError, _
+            ThisWorkbook.VBProject.Name & "." & TypeName(Me) & ".BindTo", _
+            " Failed binding to address " & VBA.CStr(a_address) & " at port " & VBA.CStr(a_port) & _
+            "; winsock32.bind(" & VBA.CStr(This.SocketId) & ", endpoint, 16) " & _
+            "returned socket error " & _
+            VBA.CStr(p_bindResult) & Winsock.LastErrorMessage()
+        This.Connected = False
+    Else
+        This.Connected = True
+    End If
+    BindTo = This.Connected
+   
+End Function
+
+''' <summary>   Returns the listening state of the socket. </summary>
+''' <value>   [Boolean] True if the socket is Listening; otherwise, False. </value>
+Public Property Get Listening() As Boolean
+    Listening = This.Listening
+End Property
+
+
+''' <summary>   Places a socket in a state in which it is listening for an incoming connection. </summary>
+''' <param name="a_backlog">   [Optional, 10] [in] The maximum length of the queue of pending connections. </para>
+''' <returns>   [Boolean] True if the socket is Listening; otherwise, False. </returns>
+Public Function StartListening(Optional ByVal a_backlog As Integer = 10) As Boolean
+
+    Dim p_listenResult As Long
+    p_listenResult = listen_(This.SocketId, a_backlog)
+    
+    If p_listenResult = wsock32.ws32_SOCKET_ERROR Then
+        cc_isr_Core_IO.UserDefinedErrors.RaiseError cc_isr_Core_IO.UserDefinedErrors.SocketListenError, _
+            ThisWorkbook.VBProject.Name & "." & TypeName(Me) & ".StartListening", _
+            " Failed to start listening at socket " & VBA.CStr(This.SocketId) & _
+            "; winsock32.listen(" & VBA.CStr(This.SocketId) & ", " & VBA.CStr(a_backlog) & ") " & _
+            "returned socket error " & _
+            VBA.CStr(p_listenResult) & Winsock.LastErrorMessage()
+        This.Listening = False
+    Else
+        This.Listening = True
+    End If
+    StartListening = This.Listening
+
+End Function
+
+''' <summary>   Permits an incoming connection attempt on a socket. </summary>
+''' <param name="a_serverSocket">   [<see cref="IPv4StreamSocket"/>] The server socket. </param>
+''' <param name="a_timeout">      [Optional, Long, 500] The maximum milliseconds time for select to wait. </param>
+''' <returns>   the connected socket. </returns>
+Public Function AcceptTcpClient(ByVal a_serverSocket As IPv4StreamSocket, _
+        Optional ByVal a_timeout As Long = 500) As IPv4StreamSocket
+
+    ' add this socket to a socket set.
+    WinsockApi.FD_SET_INIT This.FdSet
+    WinsockApi.FD_SET_ADD This.SocketId, This.FdSet
+    
+    ' check if we have available socket for readability
+    
+    Dim p_readableSocketCount As Integer
+    p_readableSocketCount = WinsockApi.DetermineReadability(This.FdSet, a_timeout)
+    
+    If p_readableSocketCount = 0 Then
+        Set AcceptTcpClient = Nothing
+        Exit Function
+    End If
+    
+    Dim p_socketId As Long
+    Dim p_Address As wsock32.ws32_Address
+    
+    ' get a connected socket id
+    
+    p_socketId = accept_(a_serverSocket.SocketId, p_Address, wsock32.ws32_AddressLen)
+    
+    If p_socketId = wsock32.ws32_INVALID_SOCKET Then
+        cc_isr_Core_IO.UserDefinedErrors.RaiseError cc_isr_Core_IO.UserDefinedErrors.SocketListenError, _
+            ThisWorkbook.VBProject.Name & "." & TypeName(Me) & ".AcceptTcpClient", _
+            " Failed accepting a tcp client at server socket " & VBA.CStr(a_serverSocket.SocketId) & _
+            "; winsock32.accept(" & VBA.CStr(a_serverSocket.SocketId) & ", Address, length) " & _
+            "returned invalid socket error " & _
+            VBA.CStr(p_socketId) & Winsock.LastErrorMessage()
+        Exit Function
+    End If
+    
+    Dim p_clientSocket As IPv4StreamSocket
+    Set p_clientSocket = New IPv4StreamSocket
+    p_clientSocket.Accept p_socketId, a_timeout
+    
+    Set AcceptTcpClient = p_clientSocket
+    
+End Function
+
+' + + + + + + + + + + + + + + + + + + + + + + + + + + +
 ' Connection Changed
+' + + + + + + + + + + + + + + + + + + + + + + + + + + +
 
 ''' <summary>   Raises the <see cref="ConnectionChanged"/> event. </summary>
 ''' <para name="a_isConnected">   [Boolean] The connection state. </param>
 Private Sub OnConnectionChanged(ByVal a_isConnected As Boolean)
     
-    RaiseEvent ConnectionChanged( _
-            cc_isr_Winsock.Factory.NewConnectionChangedEventArgs.Initialize(a_isConnected))
+    IConnectable_OnConnectionChanged _
+        cc_isr_Winsock.Factory.NewConnectionChangedEventArgs.Initialize(a_isConnected)
 
 End Sub
 
+''' <summary>   Raises the <see cref="ConnectionChanged"/> event. </summary>
+''' <para name="a_eventArgs">   [<<see cref="ConnectionChangedEventArgs"/>]. </param>
+Private Sub IConnectable_OnConnectionChanged(ByVal a_eventArgs As ConnectionChangedEventArgs)
+    
+    RaiseEvent ConnectionChanged(a_eventArgs)
+
+End Sub
+
+''' <summary>   Raises the <see cref="ConnectionChanging"/> event. </summary>
+''' <para name="a_eventArgs">   [<<see cref="cc_isr_Winsock.ConnectionChangingEventArgs"/>]. </param>
+Private Sub IConnectable_OnConnectionChanging(ByVal a_eventArgs As ConnectionChangingEventArgs)
+    
+    RaiseEvent ConnectionChanging(a_eventArgs)
+
+End Sub
 
 

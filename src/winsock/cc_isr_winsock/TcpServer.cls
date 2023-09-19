@@ -92,12 +92,12 @@ Public Property Get Connected() As Boolean
 End Property
 
 ''' <summary>   Permits an incoming connection attempt on a socket. </summary>
-''' <param name="a_timeoutMs">   [Optional, 500] The maximum milliseconds time for select to wait. </param>
+''' <param name="a_timeout">   [Optional, 500] The maximum milliseconds time for select to wait. </param>
 ''' <returns>   the connected Tcp client. </returns>
-Public Function AcceptTcpClient(Optional ByVal a_timeoutMs As Long = 500) As TcpClient
+Public Function AcceptTcpClient(Optional ByVal a_timeout As Long = 500) As TcpClient
 
     Dim p_connectedClientSocket As IPv4StreamSocket
-    Set p_connectedClientSocket = Me.TcpServerSocket.AcceptTcpClient(Me, a_timeoutMs)
+    Set p_connectedClientSocket = Me.TcpServerSocket.AcceptTcpClient(Me, a_timeout)
     
     Dim p_client As TcpClient
     Set p_client = New TcpClient

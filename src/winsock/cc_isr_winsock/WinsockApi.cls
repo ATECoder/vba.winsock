@@ -190,11 +190,11 @@ End Sub
 ''' a specific error code.
 ''' <returns>
 Public Function DetermineReadability(ByRef a_readSocketSet As wsock32.ws32_fd_set, _
-                                     Optional ByVal a_timeoutMs As Long = 500) As Integer
+                                     Optional ByVal a_timeout As Long = 500) As Integer
 
     Dim p_time As wsock32.ws32_Time_Value
-    p_time.tv_sec = a_timeoutMs / 1000
-    p_time.tv_usec = 1000 * (a_timeoutMs Mod 1000)
+    p_time.tv_sec = a_timeout / 1000
+    p_time.tv_usec = 1000 * (a_timeout Mod 1000)
     
     Dim p_emptyFdSet As wsock32.ws32_fd_set
     

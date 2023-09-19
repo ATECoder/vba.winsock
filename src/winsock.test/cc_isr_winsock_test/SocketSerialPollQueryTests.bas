@@ -1,4 +1,4 @@
-Attribute VB_Name = "SocketQueryTests"
+Attribute VB_Name = "SocketSerialPollQueryTests"
 ''' - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ''' <summary>   Socket query identity Tests. </summary>
 ''' - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -11,8 +11,7 @@ Private Type this_
     TestNumber As Integer
     BeforeAllAssert As cc_isr_Test_Fx.Assert
     BeforeEachAssert As cc_isr_Test_Fx.Assert
-    Host As String
-    Port As Long
+    Address As String
     PrologixPort As Long
     Socket As IPv4StreamSocket
     ReceiveTimeout As Long
@@ -94,11 +93,10 @@ Public Sub BeforeAll()
 
     Dim p_outcome As cc_isr_Test_Fx.Assert: Set p_outcome = cc_isr_Test_Fx.Assert.Pass("Primed to run all tests.")
     
-    This.Name = "SocketQueryTests"
+    This.Name = "SocketSerialPollQueryTests"
     
     This.TestNumber = 0
-    This.Host = "192.168.0.252"
-    This.Port = 1234
+    This.Address = "192.168.0.252:1234"
     This.PrologixPort = 1234
     This.ReceiveTimeout = 3000
     This.ReadAfterWriteDelay = 1
@@ -120,7 +118,7 @@ Public Sub BeforeAll()
     Set This.Socket = cc_isr_Winsock.Factory.NewIPv4StreamSocket()
    
     Dim p_details As String
-    If Not This.Socket.TryOpenConnection(This.Host, This.Port, This.ReceiveTimeout, p_details) Then
+    If Not This.Socket.TryOpenConnection(This.Address, This.ReceiveTimeout, p_details) Then
         Set p_outcome = cc_isr_Test_Fx.Assert.Fail(p_details)
     End If
     
@@ -189,7 +187,7 @@ Public Sub BeforeEach()
     Dim p_command As String
     Dim p_sentCount As Integer
 
-    If p_outcome.AssertSuccessful And This.Port = This.PrologixPort Then
+    If p_outcome.AssertSuccessful And This.Socket.Port = This.PrologixPort Then
     
         ' prime the Prologix device
         '
@@ -237,7 +235,7 @@ Public Sub BeforeEach()
         p_sentCount = This.Socket.SendMessage("*CLS;*WAI;*OPC?" & VBA.vbLf)
         This.DelayStopper.Wait This.ReadAfterWriteDelay
         
-        If p_outcome.AssertSuccessful And This.Port = This.PrologixPort Then
+        If p_outcome.AssertSuccessful And This.Socket.Port = This.PrologixPort Then
         
             Dim p_serialPollOutcome As cc_isr_Test_Fx.Assert
             Set p_serialPollOutcome = AssertSerialPollShouldValidate(16, 16)
@@ -262,7 +260,7 @@ Public Sub BeforeEach()
             "Unable to prime pre-test #" & VBA.CStr(This.TestNumber) & _
             "; Operation completion query should return the correct reply.")
     
-    If p_outcome.AssertSuccessful And This.Port = This.PrologixPort Then
+    If p_outcome.AssertSuccessful And This.Socket.Port = This.PrologixPort Then
     
         Set p_serialPollOutcome = AssertSerialPollShouldValidate(0, 16)
         If Not p_serialPollOutcome.AssertSuccessful Then
@@ -338,7 +336,7 @@ Public Sub AfterEach()
         p_sentCount = This.Socket.SendMessage(p_command & VBA.vbLf)
         This.DelayStopper.Wait This.ReadAfterWriteDelay
         
-        If p_outcome.AssertSuccessful And This.Port = This.PrologixPort Then
+        If p_outcome.AssertSuccessful And This.Socket.Port = This.PrologixPort Then
         
             Dim p_serialPollOutcome As cc_isr_Test_Fx.Assert
             Set p_serialPollOutcome = AssertSerialPollShouldValidate(16, 16)
@@ -357,7 +355,7 @@ Public Sub AfterEach()
     End If
         
     ' Restore Prologix device
-    If p_outcome.AssertSuccessful And This.Port = This.PrologixPort Then
+    If p_outcome.AssertSuccessful And This.Socket.Port = This.PrologixPort Then
     
         ' set the read-after-write feature to false.
         Set p_outcome = AssertShouldValidateQuery("++auto", "0")
@@ -499,7 +497,7 @@ Public Function TryQuery(ByVal a_command As String, ByRef a_reply As String, ByR
     p_sentCount = This.Socket.SendMessage(a_command & VBA.vbLf)
     This.DelayStopper.Wait This.ReadAfterWriteDelay
     
-    If This.Port = This.PrologixPort Then
+    If This.Socket.Port = This.PrologixPort Then
     
         Dim p_serialPollOutcome As cc_isr_Test_Fx.Assert
         Set p_serialPollOutcome = AssertSerialPollShouldValidate(16, 16)
@@ -783,7 +781,7 @@ Public Function TestSocketShouldConnect() As cc_isr_Test_Fx.Assert
         
     End If
     
-    If p_outcome.AssertSuccessful And This.Port = This.PrologixPort Then
+    If p_outcome.AssertSuccessful And This.Socket.Port = This.PrologixPort Then
     
         Dim p_serialPollOutcome As cc_isr_Test_Fx.Assert
         Set p_serialPollOutcome = AssertSerialPollShouldValidate(16, 16)
@@ -891,7 +889,7 @@ Public Function TestSocketShouldQueryIdentity() As cc_isr_Test_Fx.Assert
     
     End If
 
-    If p_outcome.AssertSuccessful And This.Port = This.PrologixPort Then
+    If p_outcome.AssertSuccessful And This.Socket.Port = This.PrologixPort Then
     
         Dim p_serialPollOutcome As cc_isr_Test_Fx.Assert
         Set p_serialPollOutcome = AssertSerialPollShouldValidate(16, 16)
