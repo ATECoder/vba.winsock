@@ -1,6 +1,6 @@
-Attribute VB_Name = "SocketSerialPollQueryTests"
+Attribute VB_Name = "TcpSessionSerialPollTests"
 ''' - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-''' <summary>   Socket Serial Poll query identity Tests. </summary>
+''' <summary>   Tcp Session Serial Poll query identity Tests. </summary>
 ''' - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 Option Explicit
@@ -12,8 +12,8 @@ Private Type this_
     BeforeAllAssert As cc_isr_Test_Fx.Assert
     BeforeEachAssert As cc_isr_Test_Fx.Assert
     Address As String
-    PrologixPort As Long
     Socket As IPv4StreamSocket
+    Session As TcpSession
     Termination As String
     ReceiveTimeout As Long
     ReadAfterWriteDelay As Integer
@@ -98,7 +98,6 @@ Public Sub BeforeAll()
     
     This.TestNumber = 0
     This.Address = "192.168.0.252:1234"
-    This.PrologixPort = 1234
     This.ReceiveTimeout = 3000
     This.ReadAfterWriteDelay = 1
     This.Termination = VBA.vbLf
@@ -119,6 +118,10 @@ Public Sub BeforeAll()
         
     Set This.Socket = cc_isr_Winsock.Factory.NewIPv4StreamSocket()
     
+    Set This.Session = New TcpSession
+    This.Session.Initialize This.Socket
+    This.Session.GpibLanControllerPort = 1234
+   
     Dim p_details As String
     If Not This.Socket.TryOpenConnection(This.Address, This.ReceiveTimeout, p_details) Then
         Set p_outcome = cc_isr_Test_Fx.Assert.Fail(p_details)
@@ -184,60 +187,15 @@ Public Sub BeforeEach()
     ' clear the error state.
     cc_isr_Core_IO.UserDefinedErrors.ClearErrorState
    
-    ' Prepare the next test
-
-    Dim p_command As String
-    Dim p_sentCount As Integer
-
-    If p_outcome.AssertSuccessful And This.Socket.Port = This.PrologixPort Then
-    
-        ' prime the Prologix device
-        '
-        ' EOS and EOI were set per these recommendations:
-        '
-        ' https://groups.io/g/HP-Agilent-Keysight-equipment/topic/86224398
-        '
-        ' Prologix GPIB-ETHERNET controller can be configured to automatically address
-        ' instruments to talk after sending them a command in order to read their response. The
-        ' feature called, Read-After-Write, saves the user from having to issue read commands
-        ' repeatedly.
-        
-        ' set the GPIB termination characters to none - do not append termination characters.
-        Set p_outcome = AssertShouldValidateQuery("++eos", "3")
-        
-        ' Enable EOI assertion with last character
-        Set p_outcome = AssertShouldValidateQuery("++eoi", "1")
-       
-        ' set the read-after-write feature to true.
-        Set p_outcome = AssertShouldValidateQuery("++auto", IIf(This.AssertTalkOnWrite, "1", "0"))
-    
-        If p_outcome.AssertSuccessful Then
-        
-            Dim p_timeout As Long
-            p_timeout = cc_isr_Core_IO.CoreExtensions.ClampLong(This.ReceiveTimeout, 1, 3000)
-            Set p_outcome = AssertShouldValidateQuery("++read_tmo_ms", VBA.CStr(p_timeout))
-            
-        End If
-        
-        If p_outcome.AssertSuccessful Then
-            
-            ' disable front panel operation of the currently addressed instrument.
-            p_sentCount = This.Socket.SendMessage("++llo" & This.Termination)
-            This.DelayStopper.Wait This.ReadAfterWriteDelay
-        End If
-    
-    End If
-    
     If p_outcome.AssertSuccessful Then
         
         ' clear execution state before each test.
         ' clear errors if any so as to leave the instrument without errors.
         ' here we add *OPC? to prevent the query unterminated error.
     
-        p_sentCount = This.Socket.SendMessage("*CLS;*WAI;*OPC?" & This.Termination)
-        This.DelayStopper.Wait This.ReadAfterWriteDelay
+        This.Session.SendMessage ("*CLS;*WAI;*OPC?")
         
-        If p_outcome.AssertSuccessful And This.Socket.Port = This.PrologixPort Then
+        If p_outcome.AssertSuccessful And This.Session.GpibLanControllerAttached Then
         
             Dim p_serialPollOutcome As cc_isr_Test_Fx.Assert
             Set p_serialPollOutcome = AssertSerialPollShouldValidate(16, 16)
@@ -252,7 +210,7 @@ Public Sub BeforeEach()
     Dim p_reply As String
     Dim p_details As String: p_details = VBA.vbNullString
     If p_outcome.AssertSuccessful Then
-        If 0 > TryReceive(p_reply, p_details) Then
+        If 0 > This.Session.TryReceive(p_reply, p_details) Then
             Set p_outcome = cc_isr_Test_Fx.Assert.Fail(p_details)
         End If
     End If
@@ -262,7 +220,7 @@ Public Sub BeforeEach()
             "Unable to prime pre-test #" & VBA.CStr(This.TestNumber) & _
             "; Operation completion query should return the correct reply.")
     
-    If p_outcome.AssertSuccessful And This.Socket.Port = This.PrologixPort Then
+    If p_outcome.AssertSuccessful And This.Session.GpibLanControllerAttached Then
     
         Set p_serialPollOutcome = AssertSerialPollShouldValidate(0, 16)
         If Not p_serialPollOutcome.AssertSuccessful Then
@@ -330,15 +288,13 @@ Public Sub AfterEach()
     If p_outcome.AssertSuccessful Then
     
         Dim p_command As String
-        Dim p_sentCount As Integer
         Dim p_reply As String
     
         ' clear errors if any so as to leave the instrument without errors.
         p_command = "*CLS;*WAI;*OPC?"
-        p_sentCount = This.Socket.SendMessage(p_command & This.Termination)
-        This.DelayStopper.Wait This.ReadAfterWriteDelay
+        This.Session.SendMessage (p_command)
         
-        If p_outcome.AssertSuccessful And This.Socket.Port = This.PrologixPort Then
+        If p_outcome.AssertSuccessful And This.Session.GpibLanControllerAttached Then
         
             Dim p_serialPollOutcome As cc_isr_Test_Fx.Assert
             Set p_serialPollOutcome = AssertSerialPollShouldValidate(16, 16)
@@ -349,24 +305,10 @@ Public Sub AfterEach()
         End If
         
         Dim p_details As String: p_details = VBA.vbNullString
-        If 0 > TryReceive(p_reply, p_details) Then
+        If 0 > This.Session.TryReceive(p_reply, p_details) Then
             Set p_outcome = cc_isr_Test_Fx.Assert.Fail(p_details)
         End If
-        This.DelayStopper.Wait This.ReadAfterWriteDelay
         
-    End If
-        
-    ' Restore Prologix device
-    If p_outcome.AssertSuccessful And This.Socket.Port = This.PrologixPort Then
-    
-        ' set the read-after-write feature to false.
-        Set p_outcome = AssertShouldValidateQuery("++auto", "0")
-    
-        ' restore front panel operation of the currently addressed instrument.
-        
-        p_sentCount = This.Socket.SendMessage("++loc" & This.Termination)
-        This.DelayStopper.Wait This.ReadAfterWriteDelay
-
     End If
         
 ' . . . . . . . . . . . . . . . . . . . . . . . . . . .
@@ -430,6 +372,7 @@ Public Sub AfterAll()
     End If
         
     Set This.Socket = Nothing
+    Set This.Session = Nothing
 
 ' . . . . . . . . . . . . . . . . . . . . . . . . . . .
 exit_Handler:
@@ -467,41 +410,6 @@ err_Handler:
 
 End Sub
 
-Public Function TryReceive(ByRef a_reply As String, ByRef a_details As String) As Integer
-
-    Dim p_command As String
-    If Not This.AssertTalkOnWrite Then
-        p_command = "++read eoi"
-        Dim p_sentCount As Integer
-        p_sentCount = This.Socket.SendMessage(p_command & This.Termination)
-        This.DelayStopper.Wait This.ReadAfterWriteDelay
-    End If
-    
-    TryReceive = This.Socket.TryReceive(a_reply, a_details)
-
-End Function
-
-Public Function TryQuery(ByVal a_command As String, ByRef a_reply As String, ByRef a_details As String) As Integer
-    
-    ' send the command
-    Dim p_sentCount As Integer
-    p_sentCount = This.Socket.SendMessage(a_command & This.Termination)
-    This.DelayStopper.Wait This.ReadAfterWriteDelay
-    
-    If This.Socket.Port = This.PrologixPort Then
-    
-        Dim p_serialPollOutcome As cc_isr_Test_Fx.Assert
-        Set p_serialPollOutcome = AssertSerialPollShouldValidate(16, 16)
-        If Not p_serialPollOutcome.AssertSuccessful Then
-            Debug.Print p_serialPollOutcome.AssertMessage
-        End If
-    
-    End If
-    
-    TryQuery = TryReceive(a_reply, a_details)
-
-End Function
-
 ''' summary>   Asserts that the status byte bits value are correct. </summary>
 ''' <param name="a_bitsStatus"/>   [Integer] The expected status of the specified status bits. </param>
 ''' <param name="a_statusBits"/>   [Integer] The expected status bits. </param>
@@ -518,7 +426,7 @@ Private Function AssertSerialPollShouldValidate(ByVal a_bitsStatus As Integer, B
         Dim p_stopper As cc_isr_Core_IO.Stopwatch
         Set p_stopper = cc_isr_Core_IO.Factory.NewStopwatch()
         p_stopper.Restart
-        p_polled = AwaitStatusBits(a_bitsStatus, a_statusBits, 3000, p_statusByte, p_details)
+        p_polled = This.Session.AwaitStatusBits(a_bitsStatus, a_statusBits, 3000, p_statusByte, p_details)
         p_elapsed = p_stopper.ElapsedMilliseconds
         If p_statusByte < 0 Then
             Set p_outcome = cc_isr_Test_Fx.Assert.Fail(p_details)
@@ -536,177 +444,27 @@ Private Function AssertSerialPollShouldValidate(ByVal a_bitsStatus As Integer, B
 
 End Function
 
-''' summary>   Reads the status byte of the current GPIB instrument. </summary>
-''' <param name="a_details">       [Out, String] details the failure reason. </param>
-''' <returns>   [Integer] The status byte or RECEIVE_ERROR (-1) if failed receiving a reading or
-''' failed parsing the reading to an integer.
-''' </returns>
-Public Function SerialPoll(ByRef a_details As String) As Integer
-    
-    Dim p_command As String
-    p_command = "++spoll"
-    
-    Dim p_sentCount As Integer
-    p_sentCount = This.Socket.SendMessage(p_command & This.Termination)
-    This.DelayStopper.Wait This.ReadAfterWriteDelay
-    
-    Dim p_reply As String
-    Dim p_receiveCount As Integer
-    p_receiveCount = This.Socket.TryReceive(p_reply, a_details)
-    Dim p_statusByte As Integer
-    If 0 < p_receiveCount Then
-        If Not cc_isr_Core.StringExtensions.TryParseInteger(p_reply, p_statusByte, a_details) Then
-            p_statusByte = -1
-        End If
-    Else
-        p_statusByte = -1
-    End If
-    SerialPoll = p_statusByte
-
-End Function
-
-''' summary>   Waits for the expected status bits or timeout. </summary>
-''' <param name="a_bitsStatus"/>   [Integer] The expected status of the specified status bits. </param>
-''' <param name="a_statusBits"/>   [Integer] The expected status bits. </param>
-''' <param name="a_timeout"/>      [Long] The timeout in milliseconds. </param>
-''' <param name="a_statusByte"/>   [Out, Integer] The last received status byte.
-'''                                Negative if serial poll failed. </param>
-''' <param name="a_details">       [Out, String] details the failure reason. </param>
-''' <returns>   [Boolean] True if the status byte has the expected bits value. </returns>
-Public Function AwaitStatusBits(ByVal a_bitsStatus As Integer, ByVal a_statusBits As Integer, _
-    ByVal a_timeout As Long, ByRef a_statusByte As Integer, ByRef a_details As String) As Boolean
-
-    Dim p_gotIt As Boolean
-    Dim p_stopper As cc_isr_Core_IO.Stopwatch
-    Set p_stopper = cc_isr_Core_IO.Factory.NewStopwatch()
-    p_stopper.Restart
-    
-    Do
-        DoEvents
-        ' read the status bit.
-        a_statusByte = SerialPoll(a_details)
-        p_gotIt = (a_statusByte >= 0) And (a_bitsStatus = (a_statusBits And a_statusByte))
-    Loop Until p_gotIt Or (a_statusByte < 0) Or (p_stopper.ElapsedMilliseconds > a_timeout)
-    
-    AwaitStatusBits = p_gotIt
-    
-End Function
-
-Public Function IsMessageAvailable(ByVal a_MAV As Integer, ByRef a_statusByte As Integer, ByRef a_details As String) As Boolean
-    
-    a_statusByte = SerialPoll(a_details)
-    If a_statusByte > 0 Then
-        IsMessageAvailable = (a_MAV - (a_MAV And a_statusByte))
-    Else
-        IsMessageAvailable = False
-    End If
-End Function
-
-Public Function AwaitMessageAvailable(ByVal a_MAV As Integer, ByVal timeout As Integer, _
-    ByRef a_statusByte As Integer, ByRef a_details As String) As Boolean
-
-    Dim p_stopper As cc_isr_Core_IO.Stopwatch
-    p_stopper = cc_isr_Core_IO.Factory.NewStopwatch()
-    p_stopper.Restart
-    Dim p_messageAvailable As Boolean
-    p_messageAvailable = IsMessageAvailable(a_MAV, a_statusByte, a_details)
-    While Not p_messageAvailable And (p_stopper.ElapsedMilliseconds < timeout)
-        DoEvents
-        p_messageAvailable = IsMessageAvailable(a_MAV, a_statusByte, a_details)
-    Wend
-    AwaitMessageAvailable = p_messageAvailable
-    
-End Function
-
-''' <summary>   Asserts a valid serial poll. </summary>
-Private Function AssertSerialPollShouldValidate_(ByVal a_value As Integer, ByVal a_bitValue As Integer, _
-    ByRef a_statusByte As Integer) As cc_isr_Test_Fx.Assert
-    
-    Dim p_outcome As cc_isr_Test_Fx.Assert
-    Dim p_command As String
-    Dim p_sentCount As Integer
-    Dim p_receiveCount As Integer
-    Dim p_reply As String
-    Dim p_details As String: p_details = VBA.vbNullString
-    
-    p_command = "++spoll"
-    
-    ' send the command
-    p_sentCount = This.Socket.SendMessage(p_command & This.Termination)
-    This.DelayStopper.Wait This.ReadAfterWriteDelay
-
-    ' the receive count is negative if error
-    p_receiveCount = This.Socket.TryReceive(p_reply, p_details)
-    If 0 > p_receiveCount Then
-        Set p_outcome = cc_isr_Test_Fx.Assert.Fail(p_details)
-    Else
-        Set p_outcome = cc_isr_Test_Fx.Assert.Pass()
-    End If
-    This.DelayStopper.Wait This.ReadAfterWriteDelay
-    
-    If p_outcome.AssertSuccessful Then
-    
-        If Not cc_isr_Core.StringExtensions.TryParseInteger(p_reply, a_statusByte, p_details) Then
-            Set p_outcome = cc_isr_Test_Fx.Assert.Fail(p_details)
-        Else
-            Set p_outcome = cc_isr_Test_Fx.Assert.AreEqual(a_value, a_bitValue And a_statusByte, _
-                "    Status byte '" & VBA.CStr(a_statusByte) & "' bits not matching the expected value.")
-        End If
-    End If
-            
-    Set AssertSerialPollShouldValidate_ = p_outcome
-End Function
-
 Private Function AssertShouldValidateQuery(ByVal a_command As String, ByVal a_value As String) As cc_isr_Test_Fx.Assert
     Dim p_elapsed As Double
     Dim p_stopper As cc_isr_Core_IO.Stopwatch
     Set p_stopper = cc_isr_Core_IO.Factory.NewStopwatch()
-    p_stopper.Restart
-    Set AssertShouldValidateQuery = AssertShouldValidateQuery_(a_command, a_value)
-    p_elapsed = p_stopper.ElapsedMilliseconds
-    Debug.Print "    Prologix '" & a_command & "' set to " & VBA.CStr(a_value) & _
-        " in " & Format(p_elapsed, "0.0") & "ms."
-End Function
-
-Private Function AssertShouldValidateQuery_(ByVal a_command As String, ByVal a_value As String) As cc_isr_Test_Fx.Assert
-
     Dim p_outcome As cc_isr_Test_Fx.Assert
-    Dim p_command As String
-    Dim p_sentCount As Integer
-    Dim p_receiveCount As Integer
-    Dim p_reply As String
-    Dim p_details As String: p_details = VBA.vbNullString
+    Dim p_result As String
+    Dim p_details As String
+    Dim p_setCommand As String
+    p_setCommand = a_command & " " & a_value
+    p_stopper.Restart
+    This.Session.SendMessage (a_command & " " & a_value)
     
-    ' set auto read after write
-    p_command = a_command & " " & a_value
-
-    ' send the command
-    p_sentCount = This.Socket.SendMessage(p_command & This.Termination)
-    This.DelayStopper.Wait This.ReadAfterWriteDelay
-
-    ' validate reading
-    
-    ' set auto query command
-    p_command = a_command
-    
-    p_sentCount = This.Socket.SendMessage(p_command & This.Termination)
-    This.DelayStopper.Wait This.ReadAfterWriteDelay
-    
-    ' the receive count is negative if error
-    p_receiveCount = This.Socket.TryReceive(p_reply, p_details)
-    If 0 > p_receiveCount Then
-        Set p_outcome = cc_isr_Test_Fx.Assert.Fail(p_details)
-    Else
+    If This.Session.TryGetValue(a_command, a_value, p_result, p_details) Then
         Set p_outcome = cc_isr_Test_Fx.Assert.Pass()
+    Else
+        Set p_outcome = cc_isr_Test_Fx.Assert.Fail(p_details)
     End If
-    This.DelayStopper.Wait This.ReadAfterWriteDelay
-    
-    If p_outcome.AssertSuccessful Then _
-        Set p_outcome = cc_isr_Test_Fx.Assert.AreEqual(a_value, p_reply, _
-            " Command '" & a_command & "' value does not match its expected.")
-            
-    Set AssertShouldValidateQuery_ = p_outcome
-
+    p_elapsed = p_stopper.ElapsedMilliseconds
+    Set AssertShouldValidateQuery = p_outcome
+    Debug.Print "    Prologix '" & p_setCommand & "' value set to " & p_result & _
+        " in " & Format(p_elapsed, "0.0") & "ms."
 End Function
 
 ''' <summary>   Unit test. Asserts that the stream socket should query a device identity. </summary>
@@ -761,7 +519,7 @@ Public Function TestSocketShouldConnect() As cc_isr_Test_Fx.Assert
         
     End If
     
-    If p_outcome.AssertSuccessful And This.Socket.Port = This.PrologixPort Then
+    If p_outcome.AssertSuccessful And This.Session.GpibLanControllerAttached Then
     
         Dim p_serialPollOutcome As cc_isr_Test_Fx.Assert
         Set p_serialPollOutcome = AssertSerialPollShouldValidate(16, 16)
@@ -774,10 +532,9 @@ Public Function TestSocketShouldConnect() As cc_isr_Test_Fx.Assert
     If p_outcome.AssertSuccessful Then
     
         Dim p_details As String: p_details = VBA.vbNullString
-        If 0 > TryReceive(p_reply, p_details) Then
+        If 0 > This.Session.TryReceive(p_reply, p_details) Then
             Set p_outcome = cc_isr_Test_Fx.Assert.Fail(p_details)
         End If
-        This.DelayStopper.Wait This.ReadAfterWriteDelay
     
     End If
     
@@ -869,7 +626,7 @@ Public Function TestSocketShouldQueryIdentity() As cc_isr_Test_Fx.Assert
     
     End If
 
-    If p_outcome.AssertSuccessful And This.Socket.Port = This.PrologixPort Then
+    If p_outcome.AssertSuccessful And This.Session.GpibLanControllerAttached Then
     
         Dim p_serialPollOutcome As cc_isr_Test_Fx.Assert
         Set p_serialPollOutcome = AssertSerialPollShouldValidate(16, 16)
@@ -883,10 +640,9 @@ Public Function TestSocketShouldQueryIdentity() As cc_isr_Test_Fx.Assert
     
     If p_outcome.AssertSuccessful Then
         
-        If 0 > TryReceive(p_identity, p_details) Then
+        If 0 > This.Session.TryReceive(p_identity, p_details) Then
             Set p_outcome = cc_isr_Test_Fx.Assert.Fail(p_details)
         End If
-        This.DelayStopper.Wait This.ReadAfterWriteDelay
     
     End If
     
@@ -965,7 +721,7 @@ Public Function TestSocketShouldAwaitOperationCompletion() As cc_isr_Test_Fx.Ass
     Dim p_reply As String
     Dim p_details As String: p_details = VBA.vbNullString
     If p_outcome.AssertSuccessful Then
-        If 0 > TryReceive(p_reply, p_details) Then
+        If 0 > This.Session.TryReceive(p_reply, p_details) Then
             Set p_outcome = cc_isr_Test_Fx.Assert.Fail(p_details)
         End If
     End If
@@ -1024,6 +780,8 @@ err_Handler:
     GoTo exit_Handler
     
 End Function
+
+
 
 
 

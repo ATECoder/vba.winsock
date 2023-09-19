@@ -16,14 +16,15 @@ Option Explicit
 Implements IConnectable
 
 Private Type this_
-    TcpClientSocket As IPv4StreamSocket
+    Socket As IPv4StreamSocket
+    Connectable As IConnectable
     Connected As Boolean
 End Type
 
 Private This As this_
 
-Private WithEvents m_tcpClientSocket As IPv4StreamSocket
-Attribute m_tcpClientSocket.VB_VarHelpID = -1
+Private WithEvents m_Socket As IPv4StreamSocket
+Attribute m_Socket.VB_VarHelpID = -1
 
 ''' <summary>   The event that is raised upon change of connection. </summary>
 ''' <param name="a_eventArgs">   [<see cref="cc_isr_Winsock.ConnectionChangedEventArgs"/>] event args. </param>
@@ -33,11 +34,11 @@ Public Event ConnectionChanged(ByVal a_eventArgs As cc_isr_Winsock.ConnectionCha
 ''' <param name="a_eventArgs">   [<see cref="cc_isr_Winsock.ConnectionChangingEventArgs"/>] event args. </param>
 Public Event ConnectionChanging(ByVal a_eventArgs As cc_isr_Winsock.ConnectionChangingEventArgs)
 
-''' <summary>   Handles the Class Initialize event; constructs the <see cref="TcpClientSocket"/>. </summary>
+''' <summary>   Handles the Class Initialize event. </summary>
 Private Sub Class_Initialize()
 End Sub
 
-''' <summary>   Handles the Class terminate event; disposes of the <see cref="TcpClientSocket"/>. </summary>
+''' <summary>   Handles the Class terminate event; disposes of the <see cref="Socket"/>. </summary>
 Private Sub Class_Terminate()
     IConnectable_Dispose
 End Sub
@@ -62,15 +63,21 @@ Public Function Accept(ByVal a_connectedSocket As IPv4StreamSocket) As TcpClient
     If Me.Connected Then
         cc_isr_Core_IO.UserDefinedErrors.RaiseError cc_isr_Core_IO.UserDefinedErrors.InvalidOperationError, _
             ThisWorkbook.VBProject.Name & "." & TypeName(Me) & ".Accept", _
-            " This Tcp Client is already connected to " & This.TcpClientSocket.Address & _
+            " This Tcp Client is already connected to " & This.Connectable.Address & _
             " A new Tcp Client must be used to accept a connected socket at " & _
             a_connectedSocket.Address & "."
     End If
     
     ' remove this socket
-    If Not This.TcpClientSocket Is Nothing Then Set This.TcpClientSocket = Nothing
+    If Not This.Socket Is Nothing Then
+        Set This.Connectable = Nothing
+        Set m_Socket = Nothing
+        Set This.Socket = Nothing
+    End If
     
-    Set This.TcpClientSocket = a_connectedSocket
+    Set This.Socket = a_connectedSocket
+    Set m_Socket = This.Socket
+    Set This.Connectable = This.Socket
     
     Set Accept = Me
     
@@ -78,15 +85,21 @@ End Function
 
 ''' <summary>   Gets the Tcp Client socket. </summary>
 ''' <value>   [<see cref="IPv4StreamSocket"/>]. </value>
-Public Property Get TcpClientSocket() As IPv4StreamSocket
-    Set TcpClientSocket = This.TcpClientSocket
+Public Property Get Socket() As IPv4StreamSocket
+    Set Socket = This.Socket
 End Property
+
+' + + + + + + + + + + + + + + + + + + + + + + + + + + +
+'
+'  Send and Receive
+'
+' + + + + + + + + + + + + + + + + + + + + + + + + + + +
 
 ''' <summary>   Sends a terminated message to the server. </summary>
 ''' <param name="a_message">   [String] The message. </param>
 ''' <returns>   [Long] The number of bytes that were sent to the server. </returns>
 Public Function SendMessage(ByVal a_message As String) As Long
-    SendMessage = This.TcpClientSocket.SendMessage(a_message)
+    SendMessage = This.Socket.SendMessage(a_message)
 End Function
 
 ''' <summary>   Receives a message from the server. </summary>
@@ -98,7 +111,7 @@ Public Function ReceiveBytes(Optional ByVal a_maxLength As Long = 32767, _
     Optional ByVal a_trimEnd As Boolean = True, _
     Optional ByVal a_termination As String = VBA.vbLf) As String
     
-    ReceiveBytes = This.TcpClientSocket.ReceiveBytes(a_maxLength)
+    ReceiveBytes = This.Socket.ReceiveBytes(a_maxLength)
 
 End Function
 
@@ -108,7 +121,7 @@ End Function
 ''' <returns>   The received characters. </returns>
 Public Function ReceiveUntilTimeout(Optional ByVal a_bufferSize As Integer = 1024) As String
     
-    ReceiveUntilTimeout = This.TcpClientSocket.ReceiveUntilTimeout(a_bufferSize)
+    ReceiveUntilTimeout = This.Socket.ReceiveUntilTimeout(a_bufferSize)
 
 End Function
 
@@ -122,7 +135,7 @@ Public Function ReceiveRaw(Optional ByVal a_maxLength As Long = &H7FFF, _
                            Optional ByVal a_trimEnd As Boolean = True, _
                            Optional ByVal a_termination As String = vbLf) As String
     
-    ReceiveRaw = This.TcpClientSocket.ReceiveRaw(a_maxLength, a_trimEnd, a_termination)
+    ReceiveRaw = This.Socket.ReceiveRaw(a_maxLength, a_trimEnd, a_termination)
   
 End Function
 
@@ -140,7 +153,7 @@ Public Function QueryRaw(ByVal a_message As String, _
                          Optional ByVal a_termination As String = vbLf) As String
     
     If Me.SendMessage(a_message) > 0 Then
-        QueryRaw = This.TcpClientSocket.ReceiveRaw(a_maxLength, a_trimEnd, a_termination)
+        QueryRaw = This.Socket.ReceiveRaw(a_maxLength, a_trimEnd, a_termination)
     Else
         QueryRaw = vbNullString
     End If
@@ -163,7 +176,7 @@ Public Function TryReceive(ByRef a_buffer As String, _
                            ByRef a_details As String, _
                            Optional ByVal a_trimEnd As Boolean = True, _
                            Optional ByVal a_termination As String = vbLf) As Long
-    TryReceive = This.TcpClientSocket.TryReceive(a_buffer, a_details, a_trimEnd, a_termination)
+    TryReceive = This.Socket.TryReceive(a_buffer, a_details, a_trimEnd, a_termination)
                         
 End Function
 
@@ -185,19 +198,24 @@ Public Function TryQuery(ByVal a_message As String, _
                          Optional ByVal a_trimEnd As Boolean = True, _
                          Optional ByVal a_termination As String = vbLf) As Long
     If Me.SendMessage(a_message) > 0 Then
-        TryQuery = This.TcpClientSocket.TryReceive(a_buffer, a_details, a_trimEnd, a_termination)
+        TryQuery = This.Socket.TryReceive(a_buffer, a_details, a_trimEnd, a_termination)
     Else
         TryQuery = vbNullString
     End If
   
 End Function
 
-
 ' + + + + + + + + + + + + + + + + + + + + + + + + + + +
 '
 ' Connectable implementation
 '
 ' + + + + + + + + + + + + + + + + + + + + + + + + + + +
+
+''' <summary>   Gets a reference to the object <see cref="IConnectable"/>. </summary>
+''' <value>   [IConnectable]. </value>
+Public Property Get Connectable() As IConnectable
+    Set Connectable = This.Connectable
+End Property
 
 ''' <summary>   Gets the address consisting of the IPv4 dotted-decimal host
 ''' and the port the server is listening too. </summary>
@@ -207,10 +225,10 @@ Public Property Get Address() As String
 End Property
 
 Private Property Get IConnectable_Address() As String
-    If This.TcpClientSocket Is Nothing Then
+    If This.Connectable Is Nothing Then
         IConnectable_Address = VBA.vbNullString
     Else
-        IConnectable_Address = This.TcpClientSocket.Address
+        IConnectable_Address = This.Connectable.Address
     End If
 End Property
 
@@ -223,10 +241,10 @@ End Property
 ''' <summary>   Returns true if a connection can be made. </summary>
 ''' <value>   [Boolean] True if a connection can be made. </value>
 Private Property Get IConnectable_CanConnect() As Boolean
-    If This.TcpClientSocket Is Nothing Then
+    If This.Connectable Is Nothing Then
         IConnectable_CanConnect = False
     Else
-        IConnectable_CanConnect = This.TcpClientSocket.CanConnect
+        IConnectable_CanConnect = This.Connectable.CanConnect
     End If
 End Property
 
@@ -240,10 +258,10 @@ End Property
 ''' <value>   [Boolean] True if the socket is connected; otherwise, False. </value>
 Private Property Get IConnectable_Connected() As Boolean
     
-    If This.TcpClientSocket Is Nothing Then
+    If This.Socket Is Nothing Then
         IConnectable_Connected = False
     Else
-        IConnectable_Connected = This.TcpClientSocket.Connected And This.Connected
+        IConnectable_Connected = This.Connectable.Connected And This.Connected
     End If
 
 End Property
@@ -262,7 +280,9 @@ Private Sub IConnectable_Dispose()
     
     If Not p_disconnected Then p_disconnected = IConnectable_CloseConnection()
     
-    Set This.TcpClientSocket = Nothing
+    Set This.Socket = Nothing
+    Set m_Socket = Nothing
+    Set This.Connectable = Nothing
     
     On Error GoTo 0
 
@@ -322,10 +342,11 @@ Private Function IConnectable_TryOpenConnection(ByVal a_address As String, _
     
         ' a new socket must be created on each connection because closing a socket
         ' releases the socket, which can then be used by the system as soon as it is released.
-        Set This.TcpClientSocket = New IPv4StreamSocket
-        m_tcpClientSocket = This.TcpClientSocket
+        Set This.Socket = New IPv4StreamSocket
+        Set m_Socket = This.Socket
+        Set This.Connectable = This.Socket
     
-        If This.TcpClientSocket.TryOpenConnection(a_address, a_timeout, a_details) Then
+        If This.Connectable.TryOpenConnection(a_address, a_timeout, a_details) Then
     
             IConnectable_TryOpenConnection = True
         
@@ -386,14 +407,15 @@ Private Function IConnectable_TryCloseConnection(ByRef a_details As String) As B
     
     Else
     
-        If This.TcpClientSocket.TryCloseConnection(a_details) Then
+        If This.Connectable.TryCloseConnection(a_details) Then
         
             IConnectable_TryCloseConnection = True
         
             ' the socket must be disposed here because it cannot be used after
             ' the connection is closed.
-            Set This.TcpClientSocket = Nothing
-            m_tcpClientSocket = Nothing
+            Set This.Socket = Nothing
+            m_Socket = Nothing
+            Set This.Connectable = Nothing
             
         Else
         
@@ -435,11 +457,11 @@ End Sub
 '
 ' + + + + + + + + + + + + + + + + + + + + + + + + + + +
 
-''' <summary>   Handles the <see cref="cc_isr_Winsock.TcpClient.ConnectionChanged"/> event. </summary>
+''' <summary>   Handles the <see cref="cc_isr_Winsock.IPv4SreamSocket.ConnectionChanged"/> event. </summary>
 ''' <param name="a_eventArgs">   Reference to the <see cref="cc_isr_Winsock.ConnectionChangedEventArgs"/> event arguments. </param>
-Private Sub m_tcpClientSocket_ConnectionChanged(ByVal a_eventArgs As cc_isr_Winsock.ConnectionChangedEventArgs)
+Private Sub m_Socket_ConnectionChanged(ByVal a_eventArgs As cc_isr_Winsock.ConnectionChangedEventArgs)
 
-    Const p_procedureName As String = "m_tcpClientSocket_ConnectionChanged"
+    Const p_procedureName As String = "m_Socket_ConnectionChanged"
     
     ' Trap errors to the error handler
     On Error GoTo err_Handler
@@ -472,11 +494,11 @@ err_Handler:
 
 End Sub
 
-''' <summary>   Handles the <see cref="cc_isr_Winsock.TcpClient.ConnectionChanging"/> event. </summary>
+''' <summary>   Handles the <see cref="cc_isr_Winsock.IPv4SreamSocket.ConnectionChanging"/> event. </summary>
 ''' <param name="a_eventArgs">   Reference to the <see cref="cc_isr_Winsock.ConnectionChangingEventArgs"/> event arguments. </param>
-Private Sub m_tcpClientSocket_ConnectionChanging(ByVal a_eventArgs As cc_isr_Winsock.ConnectionChangingEventArgs)
+Private Sub m_Socket_ConnectionChanging(ByVal a_eventArgs As cc_isr_Winsock.ConnectionChangingEventArgs)
 
-    Const p_procedureName As String = "m_tcpClientSocket_ConnectionChanging"
+    Const p_procedureName As String = "m_Socket_ConnectionChanging"
     
     ' Trap errors to the error handler
     On Error GoTo err_Handler
