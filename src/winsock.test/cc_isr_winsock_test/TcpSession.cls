@@ -80,12 +80,42 @@ End Property
 
 ' + + + + + + + + + + + + + + + + + + + + + + + + + + +
 '
+'  I/O
+'
+' + + + + + + + + + + + + + + + + + + + + + + + + + + +
+
+''' <summary>   Gets the termination to append to output messages. </summary>
+''' <value>   [String]. </value>
+Public Property Get Termination() As String
+    Termination = This.Termination
+End Property
+
+''' <summary>   Sets the termination to append to output messages. </summary>
+''' <param name="a_value">   [String] the termination. </param>
+Public Property Let Termination(ByVal a_value As String)
+    This.Termination = a_value
+End Property
+
+''' <summary>   Gets the Read After Write Delay in milliseconds. </summary>
+''' <value>   [Integer]. </value>
+Public Property Get ReadAfterWriteDelay() As Integer
+    ReadAfterWriteDelay = This.ReadAfterWriteDelay
+End Property
+
+''' <summary>   Sets the Read After Write Delay Delay in milliseconds. </summary>
+''' <param name="a_value">   [Integer] the Read After Write Delay Delay in milliseconds. </param>
+Public Property Let ReadAfterWriteDelay(ByVal a_value As Integer)
+    This.ReadAfterWriteDelay = a_value
+End Property
+
+' + + + + + + + + + + + + + + + + + + + + + + + + + + +
+'
 '  Device send and receive
 '
 ' + + + + + + + + + + + + + + + + + + + + + + + + + + +
 
-''' <summary>   Sends a terminated message to the server. </summary>
-''' <param name="a_message">   [String] The message. </param>
+''' <summary>   Sends an unterminate message to the server. </summary>
+''' <param name="a_message">   [String] The unterminated message. </param>
 ''' <returns>   [Long] The number of bytes that were sent to the server. </returns>
 Public Function SendMessage(ByVal a_message As String) As Long
     SendMessage = This.Socket.SendMessage(a_message & This.Termination)
@@ -117,9 +147,9 @@ Public Function TryReceive(ByRef a_buffer As String, _
                         
 End Function
 
-''' <summary>   Sends a query message and reads back from the server until reaching the specified
+''' <summary>   Sends an unterminated query message and reads back from the server until reaching the specified
 ''' termination. </summary>
-''' <param name="a_message">       [String] The query message. </param>
+''' <param name="a_message">       [String] The unterminated query message. </param>
 ''' <param name="a_buffer">        [Out, String] the received message. </param>
 ''' <param name="a_details">       [Out, String] detasils the failure reason. </param>
 ''' <param name="a_trimEnd">       [Optional, Boolean, True] True to return the string without
@@ -171,18 +201,6 @@ Public Property Get GpibLanControllerAttached() As Boolean
     End If
 End Property
 
-''' <summary>   Gets the termination to append to output messages. </summary>
-''' <value>   [String]. </value>
-Public Property Get Termination() As String
-    Termination = This.Termination
-End Property
-
-''' <summary>   Sets the termination to append to output messages. </summary>
-''' <param name="a_value">   [String] the termination. </param>
-Public Property Let Termination(ByVal a_value As String)
-    This.Termination = a_value
-End Property
-
 ''' <summary>   Tries to get and validate a value returning the actual value and true if
 ''' the correct value was set or false if not. </summary>
 ''' <remarks>   This method assumes that the bare command is the query command.  </remarks>
@@ -229,7 +247,7 @@ End Function
 
 ''' <sumamry>   Automatically address instruments to talk after sending a command. </summary>
 ''' <remarks>
-''' Prologix GPIB-ETHERNET controller can be configured to automatically address
+''' The GPIB-Lan controller can be configured to automatically address
 ''' instruments to talk after sending them a command in order to read their response. The
 ''' feature called, Read-After-Write, saves the user from having to issue read commands
 ''' repeatedly. This command enabled or disabled the Read-After-Write feature.
@@ -410,7 +428,7 @@ End Sub
 Public Function TryParseAppendTermination(ByVal a_value As String, ByRef a_details As String) As Boolean
     
     Dim p_value As Integer
-    If cc_isr_Core.StringExtensions.TryParseInteger(a_value, p_value, a_details) Then
+    If cc_isr_core.StringExtensions.TryParseInteger(a_value, p_value, a_details) Then
         This.AppendTermination = p_value
         TryParseAppendTermination = True
     Else
@@ -573,7 +591,7 @@ Public Function SerialPoll(ByRef a_details As String) As Integer
     p_receiveCount = This.Socket.TryReceive(p_reply, a_details)
     Dim p_statusByte As Integer
     If 0 < p_receiveCount Then
-        If Not cc_isr_Core.StringExtensions.TryParseInteger(p_reply, p_statusByte, a_details) Then
+        If Not cc_isr_core.StringExtensions.TryParseInteger(p_reply, p_statusByte, a_details) Then
             p_statusByte = -1
         End If
     Else

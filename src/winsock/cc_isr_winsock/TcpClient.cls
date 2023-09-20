@@ -91,7 +91,7 @@ End Property
 
 ' + + + + + + + + + + + + + + + + + + + + + + + + + + +
 '
-'  Send and Receive
+'  I/O
 '
 ' + + + + + + + + + + + + + + + + + + + + + + + + + + +
 
@@ -142,7 +142,7 @@ End Function
 
 ''' <summary>   Sends a query message and reads back from the server until reaching the specified
 ''' termination or reading the specified number of characters. </summary>
-''' <param name="a_message">       [String] The query message. </param>
+''' <param name="a_message">       [String] A terminated query message. </param>
 ''' <param name="a_maxLength">     [Optional, Long, 32767] The maximum number of bytes to read. </param>
 ''' <param name="a_trimEnd">       [Optional, Boolean, True] True to return the string without the termination. </param>
 ''' <param name="a_termination">   [Optional, String, 10 ASCII] The character the signifies the end of the stream. </param>
@@ -182,7 +182,7 @@ End Function
 
 ''' <summary>   Sends a query message and reads back from the server until reaching the specified
 ''' termination. </summary>
-''' <param name="a_message">       [String] The query message. </param>
+''' <param name="a_message">       [String] A terminated query message. </param>
 ''' <param name="a_buffer">        [Out, String] the received message. </param>
 ''' <param name="a_details">       [Out, String] detasils the failure reason. </param>
 ''' <param name="a_trimEnd">       [Optional, Boolean, True] True to return the string without

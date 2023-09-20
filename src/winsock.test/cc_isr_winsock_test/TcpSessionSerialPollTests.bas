@@ -12,13 +12,11 @@ Private Type this_
     BeforeAllAssert As cc_isr_Test_Fx.Assert
     BeforeEachAssert As cc_isr_Test_Fx.Assert
     Address As String
-    Socket As IPv4StreamSocket
     Session As TcpSession
-    Termination As String
     ReceiveTimeout As Long
-    ReadAfterWriteDelay As Integer
     AssertTalkOnWrite As Boolean
     DelayStopper As cc_isr_Core_IO.Stopwatch
+    TestStopper As cc_isr_Core_IO.Stopwatch
     ErrTracer As IErrTracer
     IdentityCompany As String
     TestCount As Integer
@@ -36,11 +34,11 @@ Public Function RunTest(ByVal a_testNumber As Integer) As cc_isr_Test_Fx.Assert
     BeforeEach
     Select Case a_testNumber
         Case 1
-            Set p_outcome = TestSocketShouldConnect
+            Set p_outcome = TestShouldConnect
         Case 2
-            Set p_outcome = TestSocketShouldQueryIdentity
+            Set p_outcome = TestShouldQueryIdentity
         Case 3
-            Set p_outcome = TestSocketShouldAwaitOperationCompletion
+            Set p_outcome = TestShouldAwaitOperationCompletion
         Case Else
     End Select
     Set RunTest = p_outcome
@@ -94,13 +92,11 @@ Public Sub BeforeAll()
 
     Dim p_outcome As cc_isr_Test_Fx.Assert: Set p_outcome = cc_isr_Test_Fx.Assert.Pass("Primed to run all tests.")
     
-    This.Name = "SocketSerialPollQueryTests"
+    This.Name = "TcpSessionSerialPollQueryTests"
     
     This.TestNumber = 0
     This.Address = "192.168.0.252:1234"
     This.ReceiveTimeout = 3000
-    This.ReadAfterWriteDelay = 1
-    This.Termination = VBA.vbLf
     
     ' set to false when testing with serial poll
     This.AssertTalkOnWrite = False
@@ -115,15 +111,16 @@ Public Sub BeforeAll()
     ' prime all tests
     
     Set This.DelayStopper = cc_isr_Core_IO.Factory.NewStopwatch
+    Set This.TestStopper = cc_isr_Core_IO.Factory.NewStopwatch
         
-    Set This.Socket = cc_isr_Winsock.Factory.NewIPv4StreamSocket()
-    
     Set This.Session = New TcpSession
-    This.Session.Initialize This.Socket
+    This.Session.Initialize cc_isr_Winsock.Factory.NewIPv4StreamSocket()
     This.Session.GpibLanControllerPort = 1234
+    This.Session.Termination = VBA.vbLf
+    This.Session.ReadAfterWriteDelay = 1
    
     Dim p_details As String
-    If Not This.Socket.TryOpenConnection(This.Address, This.ReceiveTimeout, p_details) Then
+    If Not This.Session.Socket.TryOpenConnection(This.Address, This.ReceiveTimeout, p_details) Then
         Set p_outcome = cc_isr_Test_Fx.Assert.Fail(p_details)
     End If
     
@@ -174,7 +171,7 @@ Public Sub BeforeEach()
     Dim p_outcome As cc_isr_Test_Fx.Assert
 
     If This.BeforeAllAssert.AssertSuccessful Then
-        Set p_outcome = IIf(This.Socket.Connected, _
+        Set p_outcome = IIf(This.Session.Socket.Connected, _
             cc_isr_Test_Fx.Assert.Pass("Ready to prime pre-test #" & VBA.CStr(This.TestNumber) & _
                 "; IPV4 Stream Client is connected."), _
             cc_isr_Test_Fx.Assert.Inconclusive("Unable to prime pre-test #" & VBA.CStr(This.TestNumber) & _
@@ -250,6 +247,8 @@ exit_Handler:
     Set This.BeforeEachAssert = p_outcome
 
     On Error GoTo 0
+    
+    This.TestStopper.Restart
     
     Exit Sub
 
@@ -365,13 +364,13 @@ Public Sub AfterAll()
     
     ' disconnect if connected
     Dim p_details As String: p_details = VBA.vbNullString
-    If Not This.Socket Is Nothing Then
-        If Not This.Socket.TryCloseConnection(p_details) Then
-            Set p_outcome = cc_isr_Test_Fx.Assert.Fail(p_details)
+    If Not This.Session Is Nothing Then
+        If Not This.Session.Socket Is Nothing Then
+            If Not This.Session.Socket.TryCloseConnection(p_details) Then
+                Set p_outcome = cc_isr_Test_Fx.Assert.Fail(p_details)
+            End If
         End If
     End If
-        
-    Set This.Socket = Nothing
     Set This.Session = Nothing
 
 ' . . . . . . . . . . . . . . . . . . . . . . . . . . .
@@ -437,7 +436,7 @@ Private Function AssertSerialPollShouldValidate(ByVal a_bitsStatus As Integer, B
                 VBA.CStr(p_statusByte) & "' bits '" & VBA.CStr(a_statusBits) & _
                 "' not matching the expected bits '" & VBA.CStr(a_bitsStatus) & "' value.")
         End If
-        Debug.Print "    Prologix Serial Poll is " & VBA.CStr(p_statusByte) & _
+        Debug.Print "    Serial Poll is " & VBA.CStr(p_statusByte) & _
             " in " & Format(p_elapsed, "0.0") & "ms."
     End If
     Set AssertSerialPollShouldValidate = p_outcome
@@ -463,43 +462,27 @@ Private Function AssertShouldValidateQuery(ByVal a_command As String, ByVal a_va
     End If
     p_elapsed = p_stopper.ElapsedMilliseconds
     Set AssertShouldValidateQuery = p_outcome
-    Debug.Print "    Prologix '" & p_setCommand & "' value set to " & p_result & _
+    Debug.Print "    '" & p_setCommand & "' value set to " & p_result & _
         " in " & Format(p_elapsed, "0.0") & "ms."
 End Function
 
-''' <summary>   Unit test. Asserts that the stream socket should query a device identity. </summary>
+''' <summary>   Unit test. Asserts that the session should query a device identity. </summary>
 ''' <remarks>
 ''' <code>
-''' Prologix '++eos' set to 3 in 15.6ms.
-''' Prologix '++eoi' set to 1 in 15.5ms.
-''' Prologix '++auto' set to 0 in 15.5ms.
-''' Prologix '++read_tmo_ms' set to 3000 in 15.6ms.
-''' Prologix Serial Poll is 16 in 10.8ms.
-''' Prologix Serial Poll is 0 in 8.5ms.
-''' Prologix Serial Poll is 16 in 10.7ms.
-''' Prologix Serial Poll is 0 in 5.3ms.
-''' TestSocketShouldConnect passed.
-''' Prologix Serial Poll is 16 in 10.7ms.
-'''
-''' Prologix '++auto' set to 0 in 15.5ms.
-''' Prologix '++eos' set to 3 in 19.5ms.
-''' Prologix '++eoi' set to 1 in 17.3ms.
-''' Prologix '++auto' set to 0 in 15.6ms.
-''' Prologix '++read_tmo_ms' set to 3000 in 15.6ms.
-''' Prologix Serial Poll is 16 in 21.4ms.
-''' Prologix Serial Poll is 0 in 5.5ms.
-''' Prologix Serial Poll is 16 in 10.7ms.
-''' Prologix Serial Poll is 0 in 5.5ms.
-''' TestSocketShouldConnect passed.
-''' Prologix Serial Poll is 16 in 10.7ms.
-''' Prologix '++auto' set to 0 in 15.5ms.
+''' With 1ms read after write delay.
+''' Serial Poll is 16 in 17.1ms.
+''' Serial Poll is 0 in 3.4ms.
+''' Serial Poll is 16 in 15.9ms.
+''' Serial Poll is 0 in 3.5ms.
+''' TestShouldConnect passed. in 26.5 ms.
+''' Serial Poll is 16 in 16.2ms.
 ''' </code>
 ''' </remarks>
 ''' <returns>   [<see cref="cc_isr_Test_Fx.Assert"/>] instance where
 ''' <see cref="Assert.AssertSuccessful"/> is <c>True</c> if the test passed. </returns>
-Public Function TestSocketShouldConnect() As cc_isr_Test_Fx.Assert
+Public Function TestShouldConnect() As cc_isr_Test_Fx.Assert
 
-    Const p_procedureName As String = "TestSocketShouldConnect"
+    Const p_procedureName As String = "TestShouldConnect"
     
     ' Trap errors to the error handler
     On Error GoTo err_Handler
@@ -514,8 +497,7 @@ Public Function TestSocketShouldConnect() As cc_isr_Test_Fx.Assert
             
         ' check if connected and clear errors.
         p_command = "*CLS;*WAI;*OPC?"
-        p_sentCount = This.Socket.SendMessage(p_command & This.Termination)
-        This.DelayStopper.Wait This.ReadAfterWriteDelay
+        p_sentCount = This.Session.SendMessage(p_command)
         
     End If
     
@@ -547,9 +529,10 @@ exit_Handler:
     If p_outcome.AssertSuccessful Then _
         Set p_outcome = This.ErrTracer.AssertLeftoverErrors
     
-    Debug.Print p_outcome.BuildReport("TestSocketShouldConnect")
+    Debug.Print p_outcome.BuildReport("TestShouldConnect") & _
+        " in " & VBA.Format$(This.TestStopper.ElapsedMilliseconds, "0.0") & " ms."
     
-    Set TestSocketShouldConnect = p_outcome
+    Set TestShouldConnect = p_outcome
     
     On Error GoTo 0
     Exit Function
@@ -569,43 +552,23 @@ err_Handler:
     
 End Function
 
-''' <summary>   Unit test. Asserts that the stream socket should query a device identity. </summary>
+''' <summary>   Unit test. Asserts that the session should query a device identity. </summary>
 ''' <remarks>
 ''' <code>
-''' Prologix '++eos' set to 3 in 15.9ms.
-''' Prologix '++eoi' set to 1 in 15.5ms.
-''' Prologix '++auto' set to 0 in 15.5ms.
-''' Prologix '++read_tmo_ms' set to 3000 in 15.6ms.
-''' Prologix Serial Poll is 16 in 16.0ms.
-''' Prologix Serial Poll is 0 in 5.4ms.
-''' Prologix Serial Poll is 16 in 10.7ms.
-''' Prologix Serial Poll is 0 in 5.4ms.
-''' TestSocketShouldQueryIdentity passed.
-''' Prologix Serial Poll is 16 in 22.3ms.
-''' Prologix '++auto' set to 0 in 15.4ms.
-'''
-''' With 1 ms read after write delay.
-'''
-''' Prologix Serial Poll is 16 in 12.5ms.
-''' Prologix '++auto' set to 0 in 3.5ms.
-''' Prologix '++eos' set to 3 in 6.9ms.
-''' Prologix '++eoi' set to 1 in 3.7ms.
-''' Prologix '++auto' set to 0 in 3.5ms.
-''' Prologix '++read_tmo_ms' set to 3000 in 4.1ms.
-''' Prologix Serial Poll is 16 in 21.8ms.
-''' Prologix Serial Poll is 0 in 3.5ms.
-''' Prologix Serial Poll is 16 in 9.9ms.
-''' Prologix Serial Poll is 0 in 3.4ms.
-''' TestSocketShouldQueryIdentity passed.
-''' Prologix Serial Poll is 16 in 12.9ms.
-''' Prologix '++auto' set to 0 in 3.3ms.
+''' With 1ms read after write delay
+''' Serial Poll is 16 in 11.5ms.
+''' Serial Poll is 0 in 3.4ms.
+''' Serial Poll is 16 in 11.2ms.
+''' Serial Poll is 0 in 3.3ms.
+''' TestShouldQueryIdentity passed. in 34.8 ms.
+''' Serial Poll is 16 in 13.8ms.
 ''' </code>
 ''' </remarks>
 ''' <returns>   [<see cref="cc_isr_Test_Fx.Assert"/>] instance where
 ''' <see cref="Assert.AssertSuccessful"/> is <c>True</c> if the test passed. </returns>
-Public Function TestSocketShouldQueryIdentity() As cc_isr_Test_Fx.Assert
+Public Function TestShouldQueryIdentity() As cc_isr_Test_Fx.Assert
 
-    Const p_procedureName As String = "TestSocketShouldQueryIdentity"
+    Const p_procedureName As String = "TestShouldQueryIdentity"
     
     ' Trap errors to the error handler
     On Error GoTo err_Handler
@@ -621,8 +584,7 @@ Public Function TestSocketShouldQueryIdentity() As cc_isr_Test_Fx.Assert
     If p_outcome.AssertSuccessful Then
             
         ' send the command
-        p_sentCount = This.Socket.SendMessage(p_command & This.Termination)
-        This.DelayStopper.Wait This.ReadAfterWriteDelay
+        p_sentCount = This.Session.SendMessage(p_command)
     
     End If
 
@@ -663,9 +625,10 @@ exit_Handler:
     If p_outcome.AssertSuccessful Then _
         Set p_outcome = This.ErrTracer.AssertLeftoverErrors
     
-    Debug.Print p_outcome.BuildReport("TestSocketShouldQueryIdentity")
+    Debug.Print p_outcome.BuildReport("TestShouldQueryIdentity") & _
+        " in " & VBA.Format$(This.TestStopper.ElapsedMilliseconds, "0.0") & " ms."
     
-    Set TestSocketShouldQueryIdentity = p_outcome
+    Set TestShouldQueryIdentity = p_outcome
     
     On Error GoTo 0
     Exit Function
@@ -688,13 +651,20 @@ End Function
 ''' <summary>   Unit test. Asserts that the stream socket should await operation completion. </summary>
 ''' <remarks>
 ''' <code>
+''' With 1ms read sfter write delay.
+''' Serial Poll is 16 in 23.1ms.
+''' Serial Poll is 0 in 3.4ms.
+''' Serial Poll is 96 in 5.0ms.
+''' Serial Poll is 32 in 3.9ms.
+''' SocketShouldAwaitOperationCompletion passed. in 34.9 ms.
+''' Serial Poll is 16 in 12.9ms.
 ''' </code>
 ''' </remarks>
 ''' <returns>   [<see cref="cc_isr_Test_Fx.Assert"/>] instance where
 ''' <see cref="Assert.AssertSuccessful"/> is <c>True</c> if the test passed. </returns>
-Public Function TestSocketShouldAwaitOperationCompletion() As cc_isr_Test_Fx.Assert
+Public Function TestShouldAwaitOperationCompletion() As cc_isr_Test_Fx.Assert
 
-    Const p_procedureName As String = "TestSocketShouldAwaitOperationCompletion"
+    Const p_procedureName As String = "TestShouldAwaitOperationCompletion"
     
     ' Trap errors to the error handler
     On Error GoTo err_Handler
@@ -708,13 +678,11 @@ Public Function TestSocketShouldAwaitOperationCompletion() As cc_isr_Test_Fx.Ass
             
         ' clear known state, enable OPC Standard Event and Service Request on the standard event bit.
         p_command = "*CLS;*ESE 1;*SRE 32"
-        p_sentCount = This.Socket.SendMessage(p_command & This.Termination)
-        This.DelayStopper.Wait This.ReadAfterWriteDelay
+        p_sentCount = This.Session.SendMessage(p_command)
         
         ' syncrhronize.
         p_command = "*OPC?"
-        p_sentCount = This.Socket.SendMessage(p_command & This.Termination)
-        This.DelayStopper.Wait This.ReadAfterWriteDelay
+        p_sentCount = This.Session.SendMessage(p_command)
         
     End If
     
@@ -733,8 +701,7 @@ Public Function TestSocketShouldAwaitOperationCompletion() As cc_isr_Test_Fx.Ass
     If p_outcome.AssertSuccessful Then
         
         p_command = "*OPC"
-        p_sentCount = This.Socket.SendMessage(p_command & This.Termination)
-        This.DelayStopper.Wait This.ReadAfterWriteDelay
+        p_sentCount = This.Session.SendMessage(p_command)
         
     End If
         
@@ -742,8 +709,8 @@ Public Function TestSocketShouldAwaitOperationCompletion() As cc_isr_Test_Fx.Ass
     Dim p_stadnardEventBit As Integer
     p_stadnardEventBit = 32
     
-    Dim p_requestinServiceBit As Integer
-    p_requestinServiceBit = 64
+    Dim p_requestingServiceBit As Integer
+    p_requestingServiceBit = 64
     
     If p_outcome.AssertSuccessful Then _
         Set p_outcome = AssertSerialPollShouldValidate(64, 64)
@@ -759,9 +726,10 @@ exit_Handler:
     If p_outcome.AssertSuccessful Then _
         Set p_outcome = This.ErrTracer.AssertLeftoverErrors
     
-    Debug.Print p_outcome.BuildReport("TestSocketShouldAwaitOperationCompletion")
+    Debug.Print p_outcome.BuildReport("TestShouldAwaitOperationCompletion") & _
+        " in " & VBA.Format$(This.TestStopper.ElapsedMilliseconds, "0.0") & " ms."
     
-    Set TestSocketShouldAwaitOperationCompletion = p_outcome
+    Set TestShouldAwaitOperationCompletion = p_outcome
     
     On Error GoTo 0
     Exit Function
