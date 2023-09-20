@@ -548,8 +548,9 @@ End Function
 
 ''' <summary>   Sends a terminated message to the server. </summary>
 ''' <param name="a_message">   [String] The terminated message. </param>
+''' <param name="a_delay">     [Optional, Long, 1] read after write delay in milliseconds. </param>
 ''' <returns>   [Long} The number of bytes that were sent to the server. </returns>
-Public Function SendMessage(ByVal a_message As String) As Long
+Public Function SendMessage(ByVal a_message As String, Optional ByVal a_delay As Long = 1) As Long
 
     If VBA.vbNullString = a_message Then
         SendMessage = 0
@@ -582,20 +583,27 @@ Public Function SendMessage(ByVal a_message As String) As Long
         Else
             SendMessage = p_sentLength
         End If
+        
+        cc_isr_Core_IO.Factory.NewStopwatch().Wait a_delay
+        
     End If
+    
 
 End Function
 
 ''' <summary>   Sends a terminated message to the server. </summary>
 ''' <param name="a_message">   [String] The terminated message. </param>
-''' <param name="a_count">     [Out, Long] The number of characters that were sent. </param>
 ''' <param name="a_details">   [Out, String] details the failure. </param>
-''' <returns>   [Boolean]. True if nothing to send or all message sent. </returns>
-Public Function TrySendMessage(ByVal a_message As String, ByRef a_details As String) As Boolean
+''' <param name="a_delay">     [Optional, Long, 1] read after write delay in milliseconds. </param>
+''' <returns>   [Long]. 0 if nothing to send, negative (-1) if error,
+''' positive if the entire message was sent. </returns>
+Public Function TrySendMessage(ByVal a_message As String, _
+    ByRef a_details As String, _
+    Optional ByVal a_delay As Long = 1) As Long
 
     If VBA.vbNullString = a_message Then
     
-        TrySendMessage = True
+        TrySendMessage = 0
         
     Else
     
@@ -607,27 +615,29 @@ Public Function TrySendMessage(ByVal a_message As String, ByRef a_details As Str
             
             ' if the sent length is negative, we have an API error.
             a_details = ThisWorkbook.VBProject.Name & "." & TypeName(Me) & ".SendMessage" & _
-                ". Failed sending " & a_message & _
-                "; winsock32.send(" & VBA.CStr(This.SocketId) & ", message, length, 0) " & _
+                ". Failed sending '" & a_message & "' to '" & This.Address & _
+                "'; winsock32.send(" & VBA.CStr(This.SocketId) & ", message, length, 0) " & _
                 "returned socket error " & _
                 VBA.CStr(p_sentLength) & Winsock.LastErrorMessage()
             
-            TrySendMessage = False
+            TrySendMessage = p_sentLength
             
         ElseIf p_sentLength <> p_messageLength Then
             
             a_details = ThisWorkbook.VBProject.Name & "." & TypeName(Me) & ".SendMessage" & _
-                ". Failed sending " & a_message & _
-                "; winsock32.send(" & VBA.CStr(This.SocketId) & ", message, length, 0) " & _
+                ". Failed sending '" & a_message & "' to '" & This.Address & _
+                "'; winsock32.send(" & VBA.CStr(This.SocketId) & ", message, length, 0) " & _
                 "; A partial message was sent: " & VBA.CStr(p_sentLength) & " out of " & VBA.CStr(p_messageLength)
                 
-            TrySendMessage = False
+            TrySendMessage = -1
             
         Else
             
-            TrySendMessage = True
+            TrySendMessage = p_sentLength
         
         End If
+        
+        cc_isr_Core_IO.Factory.NewStopwatch().Wait a_delay
         
     End If
 
@@ -720,7 +730,8 @@ Public Function TryReceive(ByRef a_buffer As String, _
         If p_count < 1 Then
         
             a_details = ThisWorkbook.VBProject.Name & "." & TypeName(Me) & ".TryReceiveRaw" & _
-                " winsock32.recv(" & VBA.CStr(This.SocketId) & ", buffer, 1, 0) returned " & _
+                ". Failed receiving from '" & This.Address & _
+                "'; winsock32.recv(" & VBA.CStr(This.SocketId) & ", buffer, 1, 0) returned " & _
                 VBA.CStr(p_count) & Winsock.LastErrorMessage()
             p_currentLength = RECEIVE_ERROR
             p_done = True
@@ -746,6 +757,42 @@ Public Function TryReceive(ByRef a_buffer As String, _
     TryReceive = p_currentLength
 
 End Function
+
+''' <summary>   Sends a terminated query message and reads back from the server until reaching the specified
+''' termination. </summary>
+''' <param name="a_message">       [String] The unterminated query message. </param>
+''' <param name="a_buffer">        [Out, String] the received message. </param>
+''' <param name="a_details">       [Out, String] detasils the failure reason. </param>
+''' <param name="a_delay">         [Optional, Long, 1] read after write delay in milliseconds. </param>
+''' <param name="a_trimEnd">       [Optional, Boolean, True] True to return the string without
+'''                                the termination. </param>
+''' <param name="a_termination">   [Optional, String, Line Feed] The character that signifies the
+'''                                end of the stream. </param>
+''' <returns>   [Integer] If no error, the number of bytes that were received.
+''' 0 if nothing was sent; negative if a sent error occurred, such as mismatch between sent
+''' count and message length. Otherwise, RECEIVE_ERROR (-1).
+''' </returns>
+Public Function TryQuery(ByVal a_message As String, _
+                         ByRef a_buffer As String, _
+                         ByRef a_details As String, _
+                         Optional ByVal a_delay As Long = 1, _
+                         Optional ByVal a_trimEnd As Boolean = True, _
+                         Optional ByVal a_termination As String = VBA.vbLf) As Long
+                         
+    Dim p_sentLength As Long
+    p_sentLength = Me.TrySendMessage(a_message, a_details, a_delay)
+    If p_sentLength = 0 Then
+        a_buffer = VBA.vbNullString
+        a_details = "Query command is empty."
+        TryQuery = 0
+    ElseIf p_sentLength > 0 Then
+        TryQuery = Me.TryReceive(a_buffer, a_details, a_trimEnd, a_termination)
+    Else
+        TryQuery = p_sentLength
+    End If
+  
+End Function
+
 
 ''' <summary>   Receives a message from the server until reaching the specified termination
 ''' or reading the specified number of characters. </summary>
