@@ -252,57 +252,6 @@ Attribute SocketId.VB_UserMemId = 0
     SocketId = This.SocketId
 End Property
 
-''' <summary>   Tries to parse the TCP address in the form of <c>host:port</c>. </summary>
-''' <param name="a_address">   [String] An IPv4 dotted-decimal <c>host:port</c> address. </param>
-''' <param name="a_host">      [Out, String] An IPv4 dotted-decimal host address. </param>
-''' <param name="a_port">      [Out, Long] The port that the server is listening on. </param>
-''' <param name="a_host">      [Out, String] Detaisl the failure reason. </param>
-''' <returns>   [Boolean] True if the address parsed. </returns>
-Public Function TryParseAddress(ByVal a_address As String, ByRef a_host As String, ByRef a_port As Long, _
-    ByRef a_details As String) As Boolean
-
-    Dim p_result As Boolean
-    
-    If VBA.vbNullString = a_address Then
-        a_details = ThisWorkbook.VBProject.Name & "." & TypeName(Me) & ".TryParseAddress" & _
-            " 'a_address' argument '" & a_address & "' is empty."
-        p_result = False
-    Else
-    
-        a_host = cc_isr_Core.StringExtensions.Pop(a_address, ":")
-        
-        If VBA.vbNullString = a_host Then
-            
-            a_details = ThisWorkbook.VBProject.Name & "." & TypeName(Me) & ".TryParseAddress" & _
-                " Host part in '" & a_address & "' is empty."
-            p_result = False
-        
-        Else
-            
-            If 1 = VBA.InStr(1, a_host, "localhost", vbTextCompare) Then: a_host = "127.0.0.1"
-            
-            Dim p_port As String
-            p_port = cc_isr_Core.StringExtensions.Pop(a_address, ":")
-                
-            If VBA.vbNullString = p_port Then
-            
-                a_details = ThisWorkbook.VBProject.Name & "." & TypeName(Me) & ".TryParseAddress" & _
-                    " Port part in '" & a_address & "' is empty."
-                p_result = False
-            
-            Else
-                
-                p_result = cc_isr_Core.StringExtensions.TryParseLong(p_port, a_port, a_details)
-            
-            End If
-            
-        End If
-    
-    End If
-    TryParseAddress = p_result
-    
-End Function
-
 ' + + + + + + + + + + + + + + + + + + + + + + + + + + +
 '
 ' Connectable implementation
@@ -409,7 +358,7 @@ End Function
 Private Function IConnectable_TryOpenConnection(ByVal a_address As String, _
     ByVal a_timeout As Long, ByRef a_details As String) As Boolean
 
-    If Me.TryParseAddress(a_address, This.Host, This.Port, a_details) Then
+    If cc_isr_Winsock.Winsock.TryParseAddress(a_address, This.Host, This.Port, a_details) Then
     
         Dim p_eventArgs As New cc_isr_Winsock.ConnectionChangingEventArgs
         p_eventArgs.Initialize Me.Connected
