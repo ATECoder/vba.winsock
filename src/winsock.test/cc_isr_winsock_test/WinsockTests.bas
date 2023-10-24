@@ -9,8 +9,10 @@ Option Explicit
 Private Type this_
     Name As String
     TestNumber As Integer
+    PreviousTestNumber As Integer
     BeforeAllAssert As cc_isr_Test_Fx.Assert
     BeforeEachAssert As cc_isr_Test_Fx.Assert
+    TestStopper As cc_isr_Core_IO.Stopwatch
     ErrTracer As IErrTracer
     TestCount As Integer
     RunCount As Integer
@@ -24,6 +26,7 @@ Private This As this_
 ''' <summary>   Runs the specified test. </summary>
 Public Function RunTest(ByVal a_testNumber As Integer) As cc_isr_Test_Fx.Assert
     Dim p_outcome As cc_isr_Test_Fx.Assert
+    This.TestNumber = a_testNumber
     BeforeEach
     Select Case a_testNumber
         Case 1
@@ -44,6 +47,14 @@ Public Sub RunOneTest()
 End Sub
 
 ''' <summary>   Runs all tests. </summary>
+''' <remarks>
+''' <code>
+''' Test 01 TestInitializeAndDispose passed. Elapsed time: 0.1 ms.
+''' Test 02 TestGettingLastErrorDescription passed. Elapsed time: 6.0 ms.
+''' Ran 2 out of 2 tests.
+''' Passed: 2; Failed: 0; Inconclusive: 0.
+''' </code>
+''' </remarks>
 Public Sub RunAllTests()
     BeforeAll
     Dim p_outcome As cc_isr_Test_Fx.Assert
@@ -86,7 +97,9 @@ Public Sub BeforeAll()
     This.Name = "WinsockTests"
     
     This.TestNumber = 0
+    This.PreviousTestNumber = 0
     
+    Set This.TestStopper = cc_isr_Core_IO.Factory.NewStopwatch
     Set This.ErrTracer = New ErrTracer
     
     ' clear the error state.
@@ -137,7 +150,8 @@ Public Sub BeforeEach()
     ' Trap errors to the error handler
     On Error GoTo err_Handler
 
-    This.TestNumber = This.TestNumber + 1
+    If This.TestNumber = This.PreviousTestNumber Then _
+        This.TestNumber = This.PreviousTestNumber + 1
 
     Dim p_outcome As cc_isr_Test_Fx.Assert
 
@@ -202,6 +216,9 @@ Public Sub AfterEach()
 
 ' . . . . . . . . . . . . . . . . . . . . . . . . . . .
 exit_Handler:
+    
+    ' record the previous test number
+    This.PreviousTestNumber = This.TestNumber
 
     ' release the 'Before Each' cc_isr_Test_Fx.Assert.
     Set This.BeforeEachAssert = Nothing
@@ -331,7 +348,9 @@ exit_Handler:
     If p_outcome.AssertSuccessful Then _
         Set p_outcome = This.ErrTracer.AssertLeftoverErrors
     
-    Debug.Print p_outcome.BuildReport("TestInitializeAndDispose")
+    Debug.Print "Test " & Format(This.TestNumber, "00") & " " & p_outcome.BuildReport(p_procedureName) & _
+        " Elapsed time: " & VBA.Format$(This.TestStopper.ElapsedMilliseconds, "0.0") & " ms."
+    
     
     Set TestInitializeAndDispose = p_outcome
     
@@ -377,8 +396,9 @@ exit_Handler:
     If p_outcome.AssertSuccessful Then _
         Set p_outcome = This.ErrTracer.AssertLeftoverErrors
     
-    Debug.Print p_outcome.BuildReport("TestGettingLastErrorDescription")
-    
+    Debug.Print "Test " & Format(This.TestNumber, "00") & " " & p_outcome.BuildReport(p_procedureName) & _
+        " Elapsed time: " & VBA.Format$(This.TestStopper.ElapsedMilliseconds, "0.0") & " ms."
+   
     Set TestGettingLastErrorDescription = p_outcome
     
     On Error GoTo 0

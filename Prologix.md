@@ -1,4 +1,4 @@
-# Using Prologix LAN-GPIB Device
+# Using the Prologix GPIB-ETHERNET (GPIB-Lan) Controller
 
 ## Required Applications
 
@@ -7,7 +7,7 @@
 
 Additional resources are located at the [Prologix] web site.
 
-## Settings
+## Setup
 
 1) Connect the PC to the local network and record it IP address;
 2) Connect the Prologix to the local network or directly to the computer using a direct or crossover cable.

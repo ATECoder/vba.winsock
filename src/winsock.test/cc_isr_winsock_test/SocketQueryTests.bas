@@ -9,6 +9,7 @@ Option Explicit
 Private Type this_
     Name As String
     TestNumber As Integer
+    PreviousTestNumber As Integer
     BeforeAllAssert As cc_isr_Test_Fx.Assert
     BeforeEachAssert As cc_isr_Test_Fx.Assert
     Address As String
@@ -34,6 +35,7 @@ Private This As this_
 ''' <summary>   Runs the specified test. </summary>
 Public Function RunTest(ByVal a_testNumber As Integer) As cc_isr_Test_Fx.Assert
     Dim p_outcome As cc_isr_Test_Fx.Assert
+    This.TestNumber = a_testNumber
     BeforeEach
     Select Case a_testNumber
         Case 1
@@ -56,6 +58,30 @@ Public Sub RunOneTest()
 End Sub
 
 ''' <summary>   Runs all tests. </summary>
+''' <remarks>
+''' <code>
+    '++eos' set to 3 in 54.8ms.
+    '++eoi' set to 1 in 101.3ms.
+    '++auto' set to 0 in 150.9ms.
+    '++read_tmo_ms' set to 3000 in 5.9ms.
+''' Test 01 TestSocketShouldConnect passed. Elapsed time: 15.0 ms.
+    '++auto' set to 0 in 5.6ms.
+    '++eos' set to 3 in 5.6ms.
+    '++eoi' set to 1 in 5.5ms.
+    '++auto' set to 0 in 5.5ms.
+    '++read_tmo_ms' set to 3000 in 5.6ms.
+''' Test 02 TestSocketShouldQueryIdentity passed. Elapsed time: 21.3 ms.
+    '++auto' set to 0 in 5.5ms.
+    '++eos' set to 3 in 5.4ms.
+    '++eoi' set to 1 in 5.5ms.
+    '++auto' set to 0 in 5.5ms.
+    '++read_tmo_ms' set to 3000 in 5.8ms.
+''' Test 03 TestSocketShouldAwaitOperationCompletion passed. Elapsed time: 32.9 ms.
+    '++auto' set to 0 in 5.7ms.
+''' Ran 3 out of 3 tests.
+''' Passed: 3; Failed: 0; Inconclusive: 0.
+''' </code>
+''' </remarks>
 Public Sub RunAllTests()
     BeforeAll
     Dim p_outcome As cc_isr_Test_Fx.Assert
@@ -98,6 +124,8 @@ Public Sub BeforeAll()
     This.Name = "SocketQueryTests"
     
     This.TestNumber = 0
+    This.PreviousTestNumber = 0
+    
     This.Address = "192.168.0.252:1234"
     This.PrologixPort = 1234
     This.ReceiveTimeout = 3000
@@ -168,7 +196,8 @@ Public Sub BeforeEach()
     ' Trap errors to the error handler
     On Error GoTo err_Handler
 
-    This.TestNumber = This.TestNumber + 1
+    If This.TestNumber = This.PreviousTestNumber Then _
+        This.TestNumber = This.PreviousTestNumber + 1
 
     Dim p_outcome As cc_isr_Test_Fx.Assert
 
@@ -340,6 +369,9 @@ Public Sub AfterEach()
         
 ' . . . . . . . . . . . . . . . . . . . . . . . . . . .
 exit_Handler:
+    
+    ' record the previous test number
+    This.PreviousTestNumber = This.TestNumber
 
     ' release the 'Before Each' cc_isr_Test_Fx.Assert.
     Set This.BeforeEachAssert = Nothing
@@ -553,9 +585,9 @@ exit_Handler:
     If p_outcome.AssertSuccessful Then _
         Set p_outcome = This.ErrTracer.AssertLeftoverErrors
     
-    Debug.Print p_outcome.BuildReport("TestSocketShouldConnect") & _
-        " in " & VBA.Format$(This.TestStopper.ElapsedMilliseconds, "0.0") & " ms."
-        
+    Debug.Print "Test " & Format(This.TestNumber, "00") & " " & p_outcome.BuildReport(p_procedureName) & _
+        " Elapsed time: " & VBA.Format$(This.TestStopper.ElapsedMilliseconds, "0.0") & " ms."
+    
     Set TestSocketShouldConnect = p_outcome
     
     On Error GoTo 0
@@ -638,8 +670,8 @@ exit_Handler:
     If p_outcome.AssertSuccessful Then _
         Set p_outcome = This.ErrTracer.AssertLeftoverErrors
     
-    Debug.Print p_outcome.BuildReport("TestSocketShouldQueryIdentity") & _
-        " in " & VBA.Format$(This.TestStopper.ElapsedMilliseconds, "0.0") & " ms."
+    Debug.Print "Test " & Format(This.TestNumber, "00") & " " & p_outcome.BuildReport(p_procedureName) & _
+        " Elapsed time: " & VBA.Format$(This.TestStopper.ElapsedMilliseconds, "0.0") & " ms."
     
     Set TestSocketShouldQueryIdentity = p_outcome
     
@@ -759,8 +791,8 @@ exit_Handler:
     If p_outcome.AssertSuccessful Then _
         Set p_outcome = This.ErrTracer.AssertLeftoverErrors
     
-    Debug.Print p_outcome.BuildReport("TestSocketShouldAwaitOperationCompletion") & _
-        " in " & VBA.Format$(This.TestStopper.ElapsedMilliseconds, "0.0") & " ms."
+    Debug.Print "Test " & Format(This.TestNumber, "00") & " " & p_outcome.BuildReport(p_procedureName) & _
+        " Elapsed time: " & VBA.Format$(This.TestStopper.ElapsedMilliseconds, "0.0") & " ms."
     
     Set TestSocketShouldAwaitOperationCompletion = p_outcome
     

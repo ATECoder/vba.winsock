@@ -9,6 +9,7 @@ Option Explicit
 Private Type this_
     Name As String
     TestNumber As Integer
+    PreviousTestNumber As Integer
     BeforeAllAssert As cc_isr_Test_Fx.Assert
     BeforeEachAssert As cc_isr_Test_Fx.Assert
     Address As String
@@ -31,6 +32,7 @@ Private This As this_
 ''' <summary>   Runs the specified test. </summary>
 Public Function RunTest(ByVal a_testNumber As Integer) As cc_isr_Test_Fx.Assert
     Dim p_outcome As cc_isr_Test_Fx.Assert
+    This.TestNumber = a_testNumber
     BeforeEach
     Select Case a_testNumber
         Case 1
@@ -53,6 +55,30 @@ Public Sub RunOneTest()
 End Sub
 
 ''' <summary>   Runs all tests. </summary>
+''' <remarks>
+''' <code>
+'''     Serial Poll is 16 in 12.5ms.
+'''     Serial Poll is 0 in 3.6ms.
+'''     Serial Poll is 16 in 19.9ms.
+'''     Serial Poll is 0 in 3.3ms.
+''' Test 01 TestShouldConnect passed. Elapsed time: 31.5 ms.
+'''     Serial Poll is 16 in 12.0ms.
+'''     Serial Poll is 16 in 11.4ms.
+'''     Serial Poll is 0 in 3.3ms.
+'''     Serial Poll is 16 in 8.5ms.
+'''     Serial Poll is 0 in 3.3ms.
+''' Test 02 TestShouldQueryIdentity passed. Elapsed time: 31.4 ms.
+'''     Serial Poll is 16 in 11.5ms.
+'''     Serial Poll is 16 in 10.7ms.
+'''     Serial Poll is 0 in 3.4ms.
+'''     Serial Poll is 96 in 3.8ms.
+'''     Serial Poll is 32 in 3.7ms.
+''' Test 03 TestShouldAwaitOperationCompletion passed. Elapsed time: 34.3 ms.
+'''     Serial Poll is 16 in 22.9ms.
+''' Ran 3 out of 3 tests.
+''' Passed: 3; Failed: 0; Inconclusive: 0.
+''' </code>
+''' </remarks>
 Public Sub RunAllTests()
     BeforeAll
     Dim p_outcome As cc_isr_Test_Fx.Assert
@@ -95,6 +121,8 @@ Public Sub BeforeAll()
     This.Name = "TcpSessionSerialPollQueryTests"
     
     This.TestNumber = 0
+    This.PreviousTestNumber = 0
+    
     This.Address = "192.168.0.252:1234"
     This.ReceiveTimeout = 3000
     
@@ -166,7 +194,8 @@ Public Sub BeforeEach()
     ' Trap errors to the error handler
     On Error GoTo err_Handler
 
-    This.TestNumber = This.TestNumber + 1
+    If This.TestNumber = This.PreviousTestNumber Then _
+        This.TestNumber = This.PreviousTestNumber + 1
 
     Dim p_outcome As cc_isr_Test_Fx.Assert
 
@@ -312,6 +341,9 @@ Public Sub AfterEach()
         
 ' . . . . . . . . . . . . . . . . . . . . . . . . . . .
 exit_Handler:
+    
+    ' record the previous test number
+    This.PreviousTestNumber = This.TestNumber
 
     ' release the 'Before Each' cc_isr_Test_Fx.Assert.
     Set This.BeforeEachAssert = Nothing
@@ -529,8 +561,8 @@ exit_Handler:
     If p_outcome.AssertSuccessful Then _
         Set p_outcome = This.ErrTracer.AssertLeftoverErrors
     
-    Debug.Print p_outcome.BuildReport("TestShouldConnect") & _
-        " in " & VBA.Format$(This.TestStopper.ElapsedMilliseconds, "0.0") & " ms."
+    Debug.Print "Test " & Format(This.TestNumber, "00") & " " & p_outcome.BuildReport(p_procedureName) & _
+        " Elapsed time: " & VBA.Format$(This.TestStopper.ElapsedMilliseconds, "0.0") & " ms."
     
     Set TestShouldConnect = p_outcome
     
@@ -625,8 +657,8 @@ exit_Handler:
     If p_outcome.AssertSuccessful Then _
         Set p_outcome = This.ErrTracer.AssertLeftoverErrors
     
-    Debug.Print p_outcome.BuildReport("TestShouldQueryIdentity") & _
-        " in " & VBA.Format$(This.TestStopper.ElapsedMilliseconds, "0.0") & " ms."
+    Debug.Print "Test " & Format(This.TestNumber, "00") & " " & p_outcome.BuildReport(p_procedureName) & _
+        " Elapsed time: " & VBA.Format$(This.TestStopper.ElapsedMilliseconds, "0.0") & " ms."
     
     Set TestShouldQueryIdentity = p_outcome
     
@@ -726,8 +758,8 @@ exit_Handler:
     If p_outcome.AssertSuccessful Then _
         Set p_outcome = This.ErrTracer.AssertLeftoverErrors
     
-    Debug.Print p_outcome.BuildReport("TestShouldAwaitOperationCompletion") & _
-        " in " & VBA.Format$(This.TestStopper.ElapsedMilliseconds, "0.0") & " ms."
+    Debug.Print "Test " & Format(This.TestNumber, "00") & " " & p_outcome.BuildReport(p_procedureName) & _
+        " Elapsed time: " & VBA.Format$(This.TestStopper.ElapsedMilliseconds, "0.0") & " ms."
     
     Set TestShouldAwaitOperationCompletion = p_outcome
     

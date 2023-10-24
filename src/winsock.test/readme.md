@@ -24,8 +24,6 @@ The [cc.isr.Winsock.test] workbook includes two worksheets: Identity and TestShe
 ## Scripts
 
 * [unit test]: shortcut to run unit tests.
-* [deploy]: copy the workbook and its dependencies to the deployment `..\..\bin` folder.
-* [localize]: sets workbook references to the local deployment `..\..\bin` folder.
 
 ## Unit Testing
 
@@ -60,8 +58,6 @@ Bug reports and contributions are welcome at the [cc.isr.winsock] repository.
 [cc.isr.test.fx]: https://github.com/ATECoder/vba.core/src/testfx
 
 [unit test]: ./cc.isr.winsock.test.unit.test.lnk
-[deploy]: ./deploy.ps1
-[localize]: ./localize.ps1
 
 [ISR]: https://www.integratedscientificresources.com
 

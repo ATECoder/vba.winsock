@@ -86,14 +86,14 @@ Private Sub ReadIdentity(ByVal a_host As String, ByVal a_port As Long, ByVal a_r
     ' report the socket number
     Range(m_connectedSocketIdCell).Value = p_socket.SocketId
     
-    p_socket.OpenConnection a_host, a_port
+    p_socket.OpenConnection a_host & ":" & VBA.CStr(a_port), a_timeout
     
     ' report the connection state
     Range(m_connectedCell).Value = p_socket.Connected
     
     If a_repeatCount > 0 And p_socket.Connected Then
     
-        Range(m_socketAddressCell).Value = p_socket.SocketAddress
+        Range(m_socketAddressCell).Value = p_socket.Address
     
         Dim p_command As String
     
@@ -238,15 +238,15 @@ Private Sub ReadIdentityUsingBuffer(ByVal a_host As String, ByVal a_port As Long
     ' report the socket number
     Range(m_connectedSocketIdCell).Value = p_socket.SocketId
     
-    p_socket.OpenConnection a_host, a_port
+    p_socket.OpenConnection a_host & ":" & VBA.CStr(a_port), a_timeout
     
     ' report the connection state
     Range(m_connectedCell).Value = p_socket.Connected
     
     If a_repeatCount > 0 And p_socket.Connected Then
-    
+
         ' display the socket address
-        Range(m_socketAddressCell).Value = p_socket.SocketAddress
+        Range(m_socketAddressCell).Value = p_socket.Address
         
         Dim p_command As String
     
@@ -383,10 +383,10 @@ Private Sub TcpClientReadIdentity(ByVal a_host As String, ByVal a_port As Long, 
     Dim p_client As TcpClient
     Set p_client = cc_isr_Winsock.Factory.NewTcpClient
     
-    p_client.OpenConnection a_host, a_port
+    p_client.OpenConnection a_host & ":" & VBA.CStr(a_port), a_timeout
     
     ' report the socket number
-    Range(m_connectedSocketIdCell).Value = p_client.TcpClientSocket.SocketId
+    Range(m_connectedSocketIdCell).Value = p_client.Socket.SocketId
    
     ' report the connection state
     Range(m_connectedCell).Value = p_client.Connected
@@ -394,7 +394,7 @@ Private Sub TcpClientReadIdentity(ByVal a_host As String, ByVal a_port As Long, 
     If a_repeatCount > 0 And p_client.Connected Then
     
         ' display the socket address.
-        Range(m_socketAddressCell).Value = p_client.TcpClientSocket.SocketAddress
+        Range(m_socketAddressCell).Value = p_client.Socket.Address
         
         Dim p_command As String
     
@@ -516,7 +516,7 @@ End Property
 ''' <see cref="cc_isr_Core_IO.UserDefinedErrors.ErrorsQueue">errors queue</see>. </summary>
 Public Sub TraceErrorQueue()
     
-    If cc_isr_Core_IO.UserDefinedErrors.ErrorsQueue.Count > 0 Then _
+    If cc_isr_Core_IO.UserDefinedErrors.QueuedErrorCount > 0 Then _
         Me.LastError = cc_isr_Core_IO.ErrorMessageBuilder.BuildStandardErrorMessage(VBA.vbCrLf)
 
 End Sub

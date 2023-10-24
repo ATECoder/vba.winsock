@@ -1,6 +1,13 @@
 # Change log
 All notable changes to these libraries will be documented in this file in a format based on [Keep a Change log]
 
+## [1.0.8697] - 2023-10-23
+* Update markdown documentation.
+* Remove the july branch.
+* Remove unused lFS objects.
+* Cleanuip remote repository.
+* Fix the demo code.
+
 ## [1.0.8620] - 2023-08-08
 * passed tests.
 * merged into main.

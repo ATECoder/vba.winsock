@@ -9,6 +9,7 @@ Option Explicit
 Private Type this_
     Name As String
     TestNumber As Integer
+    PreviousTestNumber As Integer
     BeforeAllAssert As cc_isr_Test_Fx.Assert
     BeforeEachAssert As cc_isr_Test_Fx.Assert
     Address As String
@@ -34,6 +35,7 @@ Private This As this_
 ''' <summary>   Runs the specified test. </summary>
 Public Function RunTest(ByVal a_testNumber As Integer) As cc_isr_Test_Fx.Assert
     Dim p_outcome As cc_isr_Test_Fx.Assert
+    This.TestNumber = a_testNumber
     BeforeEach
     Select Case a_testNumber
         Case 1
@@ -56,6 +58,45 @@ Public Sub RunOneTest()
 End Sub
 
 ''' <summary>   Runs all tests. </summary>
+''' <remarks>
+''' <code>
+'''     '++eos' set to 3 in 7.8ms.
+'''     '++eoi' set to 1 in 6.2ms.
+'''     '++auto' set to 0 in 5.5ms.
+'''     '++read_tmo_ms' set to 3000 in 5.6ms.
+'''     Serial Poll is 16 in 12.7ms.
+'''     Serial Poll is 0 in 3.5ms.
+'''     Serial Poll is 16 in 11.4ms.
+'''     Serial Poll is 0 in 3.3ms.
+''' Test 01 TestSocketShouldConnect passed. Elapsed time: 23.7 ms.
+'''     Serial Poll is 16 in 11.2ms.
+'''     '++auto' set to 0 in 5.4ms.
+'''     '++eos' set to 3 in 6.4ms.
+'''     '++eoi' set to 1 in 5.6ms.
+'''     '++auto' set to 0 in 5.5ms.
+'''     '++read_tmo_ms' set to 3000 in 6.0ms.
+'''     Serial Poll is 16 in 26.3ms.
+'''     Serial Poll is 0 in 3.4ms.
+'''     Serial Poll is 16 in 8.6ms.
+'''     Serial Poll is 0 in 3.3ms.
+''' Test 02 TestSocketShouldQueryIdentity passed. Elapsed time: 32.3 ms.
+'''     Serial Poll is 16 in 14.8ms.
+'''     '++auto' set to 0 in 5.6ms.
+'''     '++eos' set to 3 in 5.4ms.
+'''     '++eoi' set to 1 in 5.6ms.
+'''     '++auto' set to 0 in 5.5ms.
+'''     '++read_tmo_ms' set to 3000 in 6.7ms.
+'''     Serial Poll is 16 in 15.9ms.
+'''     Serial Poll is 0 in 3.5ms.
+'''     Serial Poll is 96 in 3.8ms.
+'''     Serial Poll is 32 in 3.8ms.
+''' Test 03 TestSocketShouldAwaitOperationCompletion passed. Elapsed time: 34.7 ms.
+'''     Serial Poll is 16 in 14.8ms.
+'''     '++auto' set to 0 in 5.5ms.
+''' Ran 3 out of 3 tests.
+''' Passed: 3; Failed: 0; Inconclusive: 0.
+''' </code>
+''' </remarks>
 Public Sub RunAllTests()
     BeforeAll
     Dim p_outcome As cc_isr_Test_Fx.Assert
@@ -98,6 +139,8 @@ Public Sub BeforeAll()
     This.Name = "SocketSerialPollQueryTests"
     
     This.TestNumber = 0
+    This.PreviousTestNumber = 0
+    
     This.Address = "192.168.0.252:1234"
     This.PrologixPort = 1234
     This.ReceiveTimeout = 3000
@@ -168,7 +211,8 @@ Public Sub BeforeEach()
     ' Trap errors to the error handler
     On Error GoTo err_Handler
 
-    This.TestNumber = This.TestNumber + 1
+    If This.TestNumber = This.PreviousTestNumber Then _
+        This.TestNumber = This.PreviousTestNumber + 1
 
     Dim p_outcome As cc_isr_Test_Fx.Assert
 
@@ -370,6 +414,9 @@ Public Sub AfterEach()
         
 ' . . . . . . . . . . . . . . . . . . . . . . . . . . .
 exit_Handler:
+    
+    ' record the previous test number
+    This.PreviousTestNumber = This.TestNumber
 
     ' release the 'Before Each' cc_isr_Test_Fx.Assert.
     Set This.BeforeEachAssert = Nothing
@@ -803,8 +850,8 @@ exit_Handler:
     If p_outcome.AssertSuccessful Then _
         Set p_outcome = This.ErrTracer.AssertLeftoverErrors
     
-    Debug.Print p_outcome.BuildReport("TestSocketShouldConnect") & _
-        " in " & VBA.Format$(This.TestStopper.ElapsedMilliseconds, "0.0") & " ms."
+    Debug.Print "Test " & Format(This.TestNumber, "00") & " " & p_outcome.BuildReport(p_procedureName) & _
+        " Elapsed time: " & VBA.Format$(This.TestStopper.ElapsedMilliseconds, "0.0") & " ms."
     
     Set TestSocketShouldConnect = p_outcome
     
@@ -933,8 +980,8 @@ exit_Handler:
     If p_outcome.AssertSuccessful Then _
         Set p_outcome = This.ErrTracer.AssertLeftoverErrors
     
-    Debug.Print p_outcome.BuildReport("TestSocketShouldQueryIdentity") & _
-        " in " & VBA.Format$(This.TestStopper.ElapsedMilliseconds, "0.0") & " ms."
+    Debug.Print "Test " & Format(This.TestNumber, "00") & " " & p_outcome.BuildReport(p_procedureName) & _
+        " Elapsed time: " & VBA.Format$(This.TestStopper.ElapsedMilliseconds, "0.0") & " ms."
     
     Set TestSocketShouldQueryIdentity = p_outcome
     
@@ -1042,8 +1089,8 @@ exit_Handler:
     If p_outcome.AssertSuccessful Then _
         Set p_outcome = This.ErrTracer.AssertLeftoverErrors
     
-    Debug.Print p_outcome.BuildReport("TestSocketShouldAwaitOperationCompletion") & _
-        " in " & VBA.Format$(This.TestStopper.ElapsedMilliseconds, "0.0") & " ms."
+    Debug.Print "Test " & Format(This.TestNumber, "00") & " " & p_outcome.BuildReport(p_procedureName) & _
+        " Elapsed time: " & VBA.Format$(This.TestStopper.ElapsedMilliseconds, "0.0") & " ms."
     
     Set TestSocketShouldAwaitOperationCompletion = p_outcome
     
