@@ -2,10 +2,11 @@
 All notable changes to these libraries will be documented in this file in a format based on [Keep a Change log]
 
 ## [1.0.8697] - 2023-10-23
+* Merge into main.
 * Update markdown documentation.
-* Remove the july branch.
-* Remove unused lFS objects.
-* Cleanuip remote repository.
+* Remove the beta branches.
+* Remove unused LFS objects.
+* Cleanup remote repository.
 * Fix the demo code.
 
 ## [1.0.8620] - 2023-08-08
@@ -17,6 +18,6 @@ All notable changes to these libraries will be documented in this file in a form
 
 &copy;  2023 Integrated Scientific Resources, Inc. All rights reserved.
 
-[1.0.8620]: https://github.com/ATECoder/vba.winsock
+[1.0.8697]: https://github.com/ATECoder/vba.winsock
 [Keep a Change log]: https://keepachangelog.com/en/1.0.0/
 [VBA IOT TCP]: https://github.com/ATECoder/vba.iot.tcp
