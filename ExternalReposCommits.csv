@@ -1,0 +1,3 @@
+CommitID,LocalRepoName,TargetDirectory
+ffc39c063184711eaa00ec19ddb93c908a92ef28,core,lib\vba\core
+37539eb689610bf5eb891d04f61e47413086c895,winsock,lib\vba\iot
